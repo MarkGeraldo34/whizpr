@@ -1,5 +1,6 @@
 import { SiweMessage, generateNonce } from 'siwe';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { normalizeSignature } from './normalize-signature';
 
 const SESSION_COOKIE = 'whizpr_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 24; // 24h
@@ -23,7 +24,21 @@ export function createNonce(): string {
  */
 export async function verifySiweMessage(message: string, signature: string, expectedNonce: string) {
   const siweMessage = new SiweMessage(message);
-  const result = await siweMessage.verify({ signature, nonce: expectedNonce });
+
+  // Normalize first: some wallets return a non-canonical `s` value, which
+  // ethers v6 rejects outright instead of normalizing. Retry with the
+  // canonical form so real users aren't blocked by their wallet's signing
+  // implementation.
+  const normalizedSignature = normalizeSignature(signature);
+
+  let result;
+  try {
+    result = await siweMessage.verify({ signature: normalizedSignature, nonce: expectedNonce });
+  } catch (err) {
+    // Fall back to the original signature in case normalization ever picks
+    // the wrong candidate for a non-standard wallet.
+    result = await siweMessage.verify({ signature, nonce: expectedNonce });
+  }
 
   if (!result.success) {
     throw new Error('SIWE signature verification failed');
