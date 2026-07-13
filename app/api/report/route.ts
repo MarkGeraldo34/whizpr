@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionCookieValue, sessionCookieName } from '@/lib/siwe-session';
-import { debitForUsage } from '@/lib/ledger';
+import { debitForUsage, creditDeposit } from '@/lib/ledger';
+import { storeEmergencyMedia } from '@/lib/media-storage';
 
 // Cost per emergency alert, denominated in the smallest WOKB unit tracked
 // by the ledger. Adjust to your actual pricing model.
@@ -25,6 +26,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Location (lat/lng) is required' }, { status: 400 });
   }
 
+  // Debit before storing: an alert the user can't pay for shouldn't consume
+  // Blob storage or reach responders in the first place.
   const debit = await debitForUsage(session.address, ALERT_COST, 'emergency alert submission');
   if (!debit.ok) {
     return NextResponse.json(
@@ -33,9 +36,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // TODO: persist `media` to durable storage (e.g. Vercel Blob) and fan the
-  // alert out to nearby responders. This scaffold stops at ledger debit +
-  // acknowledgement so the payment/auth path can be tested end-to-end first.
+  let stored;
+  try {
+    stored = await storeEmergencyMedia(media, session.address);
+  } catch (err) {
+    // The user has already been debited for a submission that can't be
+    // completed — refund immediately rather than silently eating the cost.
+    await creditDeposit(session.address, ALERT_COST, 'refund: media storage failed').catch(() => {
+      // Best-effort refund; if this also fails it needs manual reconciliation.
+    });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Failed to store emergency media' },
+      { status: 502 },
+    );
+  }
+
+  // TODO: fan the alert out to nearby responders (geo-matching + delivery).
+  // This scaffold now persists the media and debits the ledger, so the
+  // payment/auth/storage path can be tested end-to-end; responder matching
+  // is the next piece to build.
 
   return NextResponse.json({
     ok: true,
@@ -44,8 +63,11 @@ export async function POST(req: NextRequest) {
       lat: String(lat),
       lng: String(lng),
       description: description ? String(description) : null,
-      mediaName: media.name,
-      mediaSize: media.size,
+      media: {
+        pathname: stored.pathname,
+        contentType: stored.contentType,
+        size: stored.size,
+      },
     },
   });
 }
