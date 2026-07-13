@@ -13,9 +13,11 @@ export default function Home() {
       <div className="brand-row">
         <span className="brand-mark">
           <svg width="38" height="38" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="49" fill="#ffffff" stroke="#000000" strokeWidth="0.8" />
-            <circle cx="38.4" cy="42.4" r="20.7" fill="#FB4A0A" />
-            <ellipse cx="54.6" cy="69.2" rx="31.3" ry="10.6" fill="#0D3B36" />
+            <circle cx="50" cy="50" r="50" fill="#E42313" />
+            <rect x="28.65" y="29.65" width="46.7" height="46.7" rx="6" transform="rotate(45 52 53)" fill="#7A1B16" />
+            <rect x="26.65" y="26.65" width="46.7" height="46.7" rx="6" transform="rotate(45 50 50)" fill="#F4EEDD" />
+            <polygon points="50,22 22,48 78,48" fill="#111111" />
+            <polygon points="50,78 22,52 78,52" fill="#F1841F" />
           </svg>
         </span>
         <h1>Whizpr</h1>
