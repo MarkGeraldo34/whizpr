@@ -137,20 +137,7 @@ export function ConnectWallet({
 
   if (!isConnected) {
     return (
-      <div className={`card${menuOpen ? ' card-elevated' : ''}`}>
-        <div className="card-title">
-          <span className="icon-badge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="2" y="6" width="20" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M2 10h20" stroke="currentColor" strokeWidth="1.8" />
-              <circle cx="17" cy="14.5" r="1.4" fill="currentColor" />
-            </svg>
-          </span>
-          Connect your wallet
-        </div>
-        <p className="muted" style={{ marginBottom: 16 }}>
-          Connect a wallet to get started.
-        </p>
+      <div className="wallet-widget">
         <div className="connector-menu-anchor" ref={menuRef}>
           <button onClick={handleConnectClick} disabled={connectors.length === 0}>
             Connect Wallet
@@ -181,10 +168,10 @@ export function ConnectWallet({
 
   if (status === 'authed') {
     return (
-      <div className="card row" style={{ justifyContent: 'space-between' }}>
+      <div className="wallet-widget">
         <span className="wallet-pill">
           <span className="wallet-dot" />
-          Signed in as {address?.slice(0, 6)}...{address?.slice(-4)}
+          {address?.slice(0, 6)}...{address?.slice(-4)}
         </span>
         <button className="ghost" onClick={handleDisconnectClick}>
           Disconnect
@@ -194,24 +181,11 @@ export function ConnectWallet({
   }
 
   return (
-    <div className="card">
-      <div className="card-title">
-        <span className="icon-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            />
-            <path d="M19 11v1a7 7 0 0 1-14 0v-1M12 19v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </span>
-        Verify ownership
-      </div>
-      <p className="muted" style={{ marginBottom: 16 }}>
-        Wallet connected as {address?.slice(0, 6)}...{address?.slice(-4)}. Sign a message to verify
-        ownership (no gas required).
-      </p>
+    <div className="wallet-widget">
+      <span className="wallet-pill">
+        <span className="wallet-dot" />
+        {address?.slice(0, 6)}...{address?.slice(-4)}
+      </span>
       <button onClick={signIn} disabled={status === 'signing'}>
         {status === 'signing' ? 'Waiting for signature...' : 'Sign in with Ethereum'}
       </button>
