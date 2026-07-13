@@ -53,6 +53,30 @@ main {
   padding: 40px 20px 80px;
 }
 
+.site-footer {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 20px 40px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.site-footer p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.site-footer a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
 .page-header {
   display: flex;
   align-items: center;

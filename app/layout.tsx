@@ -13,6 +13,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>{children}</Providers>
+        <footer className="site-footer">
+          <p>
+            Developer:{' '}
+            <a href="https://twitter.com/gerald_Chzu" target="_blank" rel="noopener noreferrer">
+              @gerald_Chzu
+            </a>{' '}
+            &middot; <a href="mailto:okwunodulugerald@gmail.com">okwunodulugerald@gmail.com</a>
+          </p>
+        </footer>
       </body>
     </html>
   );
