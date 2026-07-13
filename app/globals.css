@@ -64,10 +64,14 @@ main {
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 11px;
-  background: linear-gradient(135deg, var(--alert), var(--alert-dark));
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(251, 74, 10, 0.12);
   flex-shrink: 0;
+}
+
+.brand-mark svg {
+  width: 100%;
+  height: 100%;
 }
 
 main h1 {
