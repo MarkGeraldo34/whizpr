@@ -77,7 +77,8 @@ main {
 main h1 {
   font-size: 24px;
   margin: 0;
-  letter-spacing: -0.3px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .card {
