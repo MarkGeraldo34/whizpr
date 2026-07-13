@@ -72,8 +72,9 @@ main {
   display: inline-flex;
   width: 26px;
   height: 26px;
+  color: var(--accent);
   transition: transform 0.15s var(--ease), opacity 0.15s var(--ease);
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 .site-footer-icons a:hover {
