@@ -225,10 +225,6 @@ export function AboutExplainer() {
           your wallet&rsquo;s signature. You always know exactly what you&rsquo;ve paid for and what
           you&rsquo;re holding in reserve for the moment you actually need it.
         </p>
-        <p className="about-closing">
-          Connect your wallet above to get started — it takes under a minute, and the balance you
-          prepay is there whenever an emergency isn&rsquo;t.
-        </p>
       </section>
     </div>
   );
