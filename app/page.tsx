@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ConnectWallet } from '@/components/ConnectWallet';
 import { DepositPanel } from '@/components/DepositPanel';
 import { ReportForm } from '@/components/ReportForm';
+import { AboutExplainer } from '@/components/AboutExplainer';
 
 export default function Home() {
   const [address, setAddress] = useState<string | null>(null);
@@ -28,6 +29,8 @@ export default function Home() {
       <p className="muted" style={{ marginBottom: 24 }}>
         Real-time public safety alerts, backed by a prepaid on-chain WOKB balance.
       </p>
+
+      {!address && <AboutExplainer />}
 
       {address && (
         <>
