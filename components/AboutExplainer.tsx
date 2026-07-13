@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 function useReveal() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -145,27 +145,57 @@ const STEPS = [
   },
 ];
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`about-toggle-icon${open ? ' open' : ''}`}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function AboutExplainer() {
   const containerRef = useReveal();
+  const [introOpen, setIntroOpen] = useState(false);
 
   return (
     <div ref={containerRef} className="about">
       <section className="about-intro reveal">
-        <h2>What is Whizpr?</h2>
-        <p>
-          Whizpr is a real-time public safety alert network. When something is happening — a fire
-          spreading through a building, a crash on a quiet road, a medical emergency with no ambulance
-          in sight — every second counts, and the gap between &ldquo;someone should call for
-          help&rdquo; and &ldquo;help is actually on the way&rdquo; is where people get hurt. Whizpr
-          closes that gap by turning any connected phone into a verified, instantly dispatchable alert
-          beacon.
-        </p>
-        <p>
-          Instead of dialing a number and waiting on hold, or posting to a social feed and hoping the
-          right person happens to see it, you open Whizpr, capture what&rsquo;s happening, and send it.
-          Your report carries your exact location, a timestamp, and a cryptographic guarantee that it
-          came from a real, wallet-verified person — not a bot, not a prank, not a duplicate.
-        </p>
+        <button
+          type="button"
+          className="about-toggle"
+          onClick={() => setIntroOpen((open) => !open)}
+          aria-expanded={introOpen}
+          aria-controls="about-intro-content"
+        >
+          What is Whizpr?
+          <ChevronIcon open={introOpen} />
+        </button>
+        <div id="about-intro-content" className={`about-collapse${introOpen ? ' expanded' : ''}`}>
+          <div className="about-collapse-inner">
+            <p>
+              Whizpr is a real-time public safety alert network. When something is happening — a fire
+              spreading through a building, a crash on a quiet road, a medical emergency with no
+              ambulance in sight — every second counts, and the gap between &ldquo;someone should call
+              for help&rdquo; and &ldquo;help is actually on the way&rdquo; is where people get hurt.
+              Whizpr closes that gap by turning any connected phone into a verified, instantly
+              dispatchable alert beacon.
+            </p>
+            <p>
+              Instead of dialing a number and waiting on hold, or posting to a social feed and hoping
+              the right person happens to see it, you open Whizpr, capture what&rsquo;s happening, and
+              send it. Your report carries your exact location, a timestamp, and a cryptographic
+              guarantee that it came from a real, wallet-verified person — not a bot, not a prank, not
+              a duplicate.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="about-steps">

@@ -412,6 +412,52 @@ label {
   margin-bottom: 36px;
 }
 
+button.about-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+}
+
+button.about-toggle:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: none;
+  box-shadow: none;
+}
+
+.about-toggle-icon {
+  color: var(--accent);
+  transition: transform 0.3s var(--ease);
+  flex-shrink: 0;
+}
+
+.about-toggle-icon.open {
+  transform: rotate(180deg);
+}
+
+.about-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s var(--ease);
+}
+
+.about-collapse.expanded {
+  grid-template-rows: 1fr;
+}
+
+.about-collapse-inner {
+  overflow: hidden;
+  padding-top: 14px;
+}
+
 .about-steps {
   display: flex;
   flex-direction: column;
