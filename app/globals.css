@@ -223,6 +223,48 @@ label {
   flex-wrap: wrap;
 }
 
+.connector-menu-anchor {
+  position: relative;
+  display: inline-block;
+}
+
+.connector-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(18, 24, 33, 0.85);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+  animation: fadeIn 0.15s var(--ease);
+}
+
+.connector-option {
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.connector-option:hover:not(:disabled) {
+  background: rgba(241, 132, 31, 0.14);
+  transform: none;
+  filter: none;
+}
+
 .status-text {
   font-size: 13px;
   margin-top: 10px;

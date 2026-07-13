@@ -1,7 +1,7 @@
 'use client';
 
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SiweMessage } from 'siwe';
 
 export function ConnectWallet({
@@ -15,6 +15,27 @@ export function ConnectWallet({
   const { signMessageAsync } = useSignMessage();
   const [status, setStatus] = useState<'idle' | 'signing' | 'authed' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
+  function handleConnectClick() {
+    if (connectors.length === 1) {
+      connect({ connector: connectors[0] });
+      return;
+    }
+    setMenuOpen((open) => !open);
+  }
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -84,12 +105,26 @@ export function ConnectWallet({
         <p className="muted" style={{ marginBottom: 16 }}>
           Connect a wallet to get started.
         </p>
-        <div className="row">
-          {connectors.map((connector) => (
-            <button key={connector.uid} onClick={() => connect({ connector })}>
-              Connect {connector.name}
-            </button>
-          ))}
+        <div className="connector-menu-anchor" ref={menuRef}>
+          <button onClick={handleConnectClick} disabled={connectors.length === 0}>
+            Connect Wallet
+          </button>
+          {menuOpen && connectors.length > 1 && (
+            <div className="connector-menu">
+              {connectors.map((connector) => (
+                <button
+                  key={connector.uid}
+                  className="connector-option"
+                  onClick={() => {
+                    connect({ connector });
+                    setMenuOpen(false);
+                  }}
+                >
+                  {connector.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
