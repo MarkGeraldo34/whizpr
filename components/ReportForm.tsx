@@ -50,6 +50,21 @@ export function ReportForm() {
 
   return (
     <div className="card">
+      <div className="card-title alert-title">
+        <span className="icon-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+        Report an emergency
+      </div>
+
       <label>Emergency photo or video</label>
       <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
 
@@ -68,7 +83,11 @@ export function ReportForm() {
         {(status === 'idle' || status === 'ok' || status === 'error') && 'Send emergency alert'}
       </button>
 
-      {message && <p className="muted" style={{ marginTop: 10 }}>{message}</p>}
+      {message && (
+        <p className={`status-text ${status === 'ok' ? 'ok' : status === 'error' ? 'error' : 'muted'}`}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }

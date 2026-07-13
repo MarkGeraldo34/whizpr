@@ -67,28 +67,28 @@ export function DepositPanel() {
 
   return (
     <div className="card">
-      <label>Prepaid WOKB balance</label>
-      <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>
-        {balance !== null ? `${balance} wei` : '—'}
+      <div className="card-title">
+        <span className="icon-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+            <path
+              d="M12 7v10M9.5 9.5c0-1.1 1.12-2 2.5-2s2.5.9 2.5 2c0 2.5-5 1.5-5 4 0 1.1 1.12 2 2.5 2s2.5-.9 2.5-2"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+        Prepaid balance
       </div>
+      <div className="balance-display">{balance !== null ? `${balance} wei` : '—'}</div>
 
       <label>Deposit address {CHAIN_ID && `(chain ${CHAIN_ID})`}</label>
       {DEPOSIT_ADDRESS ? (
         <>
-          <div
-            className="row"
-            style={{
-              justifyContent: 'space-between',
-              background: '#0d1420',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '10px 12px',
-              marginTop: 6,
-              marginBottom: 6,
-            }}
-          >
-            <code style={{ fontSize: 13, wordBreak: 'break-all' }}>{DEPOSIT_ADDRESS}</code>
-            <button onClick={copyAddress} style={{ flexShrink: 0 }}>
+          <div className="address-box">
+            <code>{DEPOSIT_ADDRESS}</code>
+            <button className="ghost" onClick={copyAddress} style={{ flexShrink: 0 }}>
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
@@ -98,7 +98,7 @@ export function DepositPanel() {
           </p>
         </>
       ) : (
-        <p style={{ color: 'var(--alert)', marginBottom: 14 }}>
+        <p className="status-text error" style={{ marginBottom: 14 }}>
           Deposit address is not configured (NEXT_PUBLIC_DEPOSIT_ADDRESS is missing).
         </p>
       )}
@@ -113,7 +113,7 @@ export function DepositPanel() {
       <button onClick={submitDeposit} disabled={status === 'verifying' || !txHash}>
         {status === 'verifying' ? 'Verifying on-chain...' : 'Verify deposit'}
       </button>
-      {message && <p className="muted" style={{ marginTop: 10 }}>{message}</p>}
+      {message && <p className="status-text muted">{message}</p>}
     </div>
   );
 }
