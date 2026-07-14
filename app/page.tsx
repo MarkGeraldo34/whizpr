@@ -27,7 +27,7 @@ export default function Home() {
         <ConnectWallet onAuthenticated={setAddress} onDisconnected={() => setAddress(null)} />
       </div>
       <p className="muted" style={{ marginBottom: 24 }}>
-        Real-time public safety alerts, backed by a prepaid on-chain WOKB balance.
+        Real-time public safety alerts, backed by a prepaid on-chain USDT balance.
       </p>
 
       {!address && <AboutExplainer />}

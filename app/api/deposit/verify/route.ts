@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionCookieValue, sessionCookieName } from '@/lib/siwe-session';
-import { verifyWokbDeposit } from '@/lib/viem-server';
+import { verifyUsdtDeposit } from '@/lib/viem-server';
 import { creditDeposit, hasProcessedDeposit, markDepositProcessed } from '@/lib/ledger';
 
 export async function POST(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Deposit already processed' }, { status: 409 });
   }
 
-  const result = await verifyWokbDeposit(txHash);
+  const result = await verifyUsdtDeposit(txHash);
 
   if (!result.verified || !result.amount || !result.from) {
     return NextResponse.json(result, { status: 202 }); // not yet finalized / invalid

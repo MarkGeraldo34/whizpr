@@ -1,5 +1,5 @@
 /**
- * Server-side prepaid WOKB ledger.
+ * Server-side prepaid USDT ledger.
  *
  * This module exposes a small interface (getBalance / credit / debit) so the
  * rest of the app never touches storage directly. The in-memory Map below is
@@ -27,7 +27,7 @@ export async function getBalance(address: `0x${string}`): Promise<bigint> {
 export async function creditDeposit(
   address: `0x${string}`,
   amount: bigint,
-  reason = 'on-chain WOKB deposit',
+  reason = 'on-chain USDT deposit',
 ): Promise<bigint> {
   const key = keyFor(address);
   const entry = inMemoryLedger.get(key) ?? { balance: 0n, history: [] };

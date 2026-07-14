@@ -93,7 +93,7 @@ export function DepositPanel() {
             </button>
           </div>
           <p className="muted" style={{ marginBottom: 14 }}>
-            Send WOKB to this address, then paste the transaction hash below to credit your
+            Send USDT to this address, then paste the transaction hash below to credit your
             prepaid balance.
           </p>
         </>

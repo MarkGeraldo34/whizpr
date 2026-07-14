@@ -1,7 +1,7 @@
 # Whizpr
 
 Real-time public safety web app: users upload emergency media to alert nearby
-responders. Built on OKX's OnchainOS infrastructure with a prepaid WOKB token
+responders. Built on OKX's OnchainOS infrastructure with a prepaid USDT token
 economy.
 
 ## Architecture
@@ -9,7 +9,7 @@ economy.
 - **Auth:** SIWE-lite wallet sign-in — standard EIP-4361 message + signature
   verification (via the `siwe` package), backed by a minimal HMAC-signed
   session cookie instead of a full session-store library.
-- **Deposits:** Users send WOKB to a treasury address; `viem` verifies the
+- **Deposits:** Users send USDT to a treasury address; `viem` verifies the
   ERC-20 `Transfer` event and required confirmations server-side before
   crediting the ledger (`lib/viem-server.ts`).
 - **Ledger:** A server-side prepaid balance (`lib/ledger.ts`). Ships with an
@@ -54,7 +54,7 @@ npm run dev
    Variables. Add every key from `.env.example` for both **Preview** and
    **Production** environments:
    - `NEXT_PUBLIC_CHAIN_RPC_URL`, `SERVER_RPC_URL`, `NEXT_PUBLIC_CHAIN_ID`
-   - `NEXT_PUBLIC_WOKB_TOKEN_ADDRESS`, `NEXT_PUBLIC_DEPOSIT_ADDRESS`,
+   - `NEXT_PUBLIC_USDT_TOKEN_ADDRESS`, `NEXT_PUBLIC_DEPOSIT_ADDRESS`,
      `DEPOSIT_MIN_CONFIRMATIONS`
    - `SESSION_SECRET` (generate with `openssl rand -hex 32` — use a
      **different** value per environment)

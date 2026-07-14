@@ -26,17 +26,17 @@ export interface DepositVerificationResult {
 }
 
 /**
- * Verifies a WOKB ERC-20 Transfer event to the Whizpr deposit address,
+ * Verifies a USDT ERC-20 Transfer event to the Whizpr deposit address,
  * requiring the configured minimum number of confirmations before the
  * deposit is considered final and creditable to the prepaid ledger.
  */
-export async function verifyWokbDeposit(txHash: Hash): Promise<DepositVerificationResult> {
-  const tokenAddress = process.env.NEXT_PUBLIC_WOKB_TOKEN_ADDRESS as `0x${string}` | undefined;
+export async function verifyUsdtDeposit(txHash: Hash): Promise<DepositVerificationResult> {
+  const tokenAddress = process.env.NEXT_PUBLIC_USDT_TOKEN_ADDRESS as `0x${string}` | undefined;
   const depositAddress = process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS as `0x${string}` | undefined;
   const minConfirmations = Number(process.env.DEPOSIT_MIN_CONFIRMATIONS ?? 3);
 
   if (!tokenAddress || !depositAddress) {
-    return { verified: false, reason: 'WOKB token or deposit address not configured' };
+    return { verified: false, reason: 'USDT token or deposit address not configured' };
   }
 
   const receipt = await serverClient.getTransactionReceipt({ hash: txHash });
@@ -53,7 +53,7 @@ export async function verifyWokbDeposit(txHash: Hash): Promise<DepositVerificati
   );
 
   if (!transferLog) {
-    return { verified: false, reason: 'No WOKB transfer log found in transaction' };
+    return { verified: false, reason: 'No USDT transfer log found in transaction' };
   }
 
   // Decode using viem's log parsing against the ERC-20 Transfer signature.

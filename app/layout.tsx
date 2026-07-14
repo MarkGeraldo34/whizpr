@@ -5,7 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Whizpr — Real-time public safety alerts',
   description:
-    'Upload emergency media to alert nearby responders in real time, backed by an on-chain prepaid WOKB ledger.',
+    'Upload emergency media to alert nearby responders in real time, backed by an on-chain prepaid USDT ledger.',
 };
 
 function XIcon() {

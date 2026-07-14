@@ -3,9 +3,9 @@ import { verifySessionCookieValue, sessionCookieName } from '@/lib/siwe-session'
 import { debitForUsage, creditDeposit } from '@/lib/ledger';
 import { storeEmergencyMedia } from '@/lib/media-storage';
 
-// Cost per emergency alert, denominated in the smallest WOKB unit tracked
+// Cost per emergency alert, denominated in the smallest USDT unit tracked
 // by the ledger. Adjust to your actual pricing model.
-const ALERT_COST = 1_000_000_000_000_000n; // 0.001 WOKB (18 decimals)
+const ALERT_COST = 1_000_000_000_000_000n; // 0.001 USDT (18 decimals)
 
 export async function POST(req: NextRequest) {
   const session = verifySessionCookieValue(req.cookies.get(sessionCookieName)?.value);
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const debit = await debitForUsage(session.address, ALERT_COST, 'emergency alert submission');
   if (!debit.ok) {
     return NextResponse.json(
-      { error: 'Insufficient prepaid balance. Deposit WOKB before submitting an alert.' },
+      { error: 'Insufficient prepaid balance. Deposit USDT before submitting an alert.' },
       { status: 402 },
     );
   }

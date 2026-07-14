@@ -70,7 +70,7 @@ function IllustrationPrepay() {
     <svg viewBox="0 0 220 170" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="110" cy="42" r="26" fill="#F1841F" />
       <text x="110" y="51" textAnchor="middle" fontSize="22" fontWeight="700" fill="#161d29" fontFamily="ui-sans-serif, sans-serif">
-        W
+        $
       </text>
       <path d="M110 72v22" stroke="#F1841F" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" />
       <path d="M100 90 110 100 120 90" stroke="#F1841F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -129,8 +129,8 @@ const STEPS = [
     illustration: IllustrationConnect,
   },
   {
-    title: 'Prepay in WOKB',
-    body: 'Top up a small prepaid balance in WOKB before anything happens. There’s no subscription and nothing is charged until you actually send an alert — the deposit just sits ready, verified on-chain.',
+    title: 'Prepay in USDT',
+    body: 'Top up a small prepaid balance in USDT before anything happens. There’s no subscription and nothing is charged until you actually send an alert — the deposit just sits ready, verified on-chain.',
     illustration: IllustrationPrepay,
   },
   {
