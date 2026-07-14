@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ConnectWallet } from '@/components/ConnectWallet';
 import { DepositPanel } from '@/components/DepositPanel';
 import { ReportForm } from '@/components/ReportForm';
+import { ReportFormPreview } from '@/components/ReportFormPreview';
 import { AboutExplainer } from '@/components/AboutExplainer';
 
 export default function Home() {
@@ -30,7 +31,12 @@ export default function Home() {
         Real-time public safety alerts, backed by a prepaid on-chain USDT balance.
       </p>
 
-      {!address && <AboutExplainer />}
+      {!address && (
+        <>
+          <ReportFormPreview />
+          <AboutExplainer />
+        </>
+      )}
 
       {address && (
         <>
