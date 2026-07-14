@@ -1,12 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 export function ReportForm() {
   const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'idle' | 'locating' | 'submitting' | 'ok' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+
+  const photoCaptureRef = useRef<HTMLInputElement>(null);
+  const videoCaptureRef = useRef<HTMLInputElement>(null);
+  const libraryPickerRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  function pickFile(next: File | null) {
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return next ? URL.createObjectURL(next) : null;
+    });
+    setFile(next);
+    if (message) setMessage(null);
+  }
+
+  function clearFile() {
+    pickFile(null);
+    if (photoCaptureRef.current) photoCaptureRef.current.value = '';
+    if (videoCaptureRef.current) videoCaptureRef.current.value = '';
+    if (libraryPickerRef.current) libraryPickerRef.current.value = '';
+  }
 
   async function submitReport() {
     if (!file) {
@@ -34,7 +55,7 @@ export function ReportForm() {
 
           setStatus('ok');
           setMessage('Alert sent to nearby responders.');
-          setFile(null);
+          clearFile();
           setDescription('');
         } catch (err) {
           setStatus('error');
@@ -66,7 +87,70 @@ export function ReportForm() {
       </div>
 
       <label>Emergency photo or video</label>
-      <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+
+      {/* Hidden inputs — `capture` opens the device's native camera app
+          directly instead of the file/gallery picker. */}
+      <input
+        ref={photoCaptureRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+        style={{ display: 'none' }}
+      />
+      <input
+        ref={videoCaptureRef}
+        type="file"
+        accept="video/*"
+        capture="environment"
+        onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+        style={{ display: 'none' }}
+      />
+      <input
+        ref={libraryPickerRef}
+        type="file"
+        accept="image/*,video/*"
+        onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+        style={{ display: 'none' }}
+      />
+
+      <div className="row" style={{ marginBottom: 14 }}>
+        <button type="button" className="ghost" onClick={() => photoCaptureRef.current?.click()}>
+          📷 Take photo
+        </button>
+        <button type="button" className="ghost" onClick={() => videoCaptureRef.current?.click()}>
+          🎥 Record video
+        </button>
+        <button type="button" className="ghost" onClick={() => libraryPickerRef.current?.click()}>
+          Choose from library
+        </button>
+      </div>
+
+      {file && (
+        <div className="row" style={{ marginBottom: 14, alignItems: 'center' }}>
+          {previewUrl && file.type.startsWith('image/') && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="Captured emergency preview"
+              style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
+            />
+          )}
+          {previewUrl && file.type.startsWith('video/') && (
+            <video
+              src={previewUrl}
+              muted
+              style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
+            />
+          )}
+          <span className="muted" style={{ flex: 1, wordBreak: 'break-all' }}>
+            {file.name || 'Captured media'}
+          </span>
+          <button type="button" className="ghost" onClick={clearFile}>
+            Remove
+          </button>
+        </div>
+      )}
 
       <label htmlFor="description">What's happening?</label>
       <textarea
