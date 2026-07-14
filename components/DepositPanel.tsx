@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 
 const DEPOSIT_ADDRESS = process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS ?? '';
 const CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID ?? '';
+// Whizpr runs on OKX's X Layer (chain ID 196) — the only chain ID this app
+// currently targets. Named explicitly so depositors don't guess wrong and
+// send USDT on a network that can't be credited.
+const CHAIN_NAME = CHAIN_ID === '196' ? 'X Layer' : null;
 
 export function DepositPanel() {
   const [balance, setBalance] = useState<string | null>(null);
@@ -83,7 +87,9 @@ export function DepositPanel() {
       </div>
       <div className="balance-display">{balance !== null ? `${balance} wei` : '—'}</div>
 
-      <label>Deposit address {CHAIN_ID && `(chain ${CHAIN_ID})`}</label>
+      <label>
+        Deposit address {CHAIN_NAME ? `(${CHAIN_NAME})` : CHAIN_ID && `(chain ${CHAIN_ID})`}
+      </label>
       {DEPOSIT_ADDRESS ? (
         <>
           <div className="address-box">
@@ -92,6 +98,10 @@ export function DepositPanel() {
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
+          <p className="status-text error" style={{ marginTop: -8 }}>
+            Only send USDT on {CHAIN_NAME ?? `chain ${CHAIN_ID}`} — deposits sent on any other
+            network (Ethereum, BSC, etc.) will not be credited and cannot be recovered.
+          </p>
           <p className="muted" style={{ marginBottom: 14 }}>
             Send USDT to this address, then paste the transaction hash below to credit your
             prepaid balance.
