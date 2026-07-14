@@ -161,7 +161,7 @@ main h1 {
   margin-bottom: 4px;
 }
 
-.card-title .icon-badge {
+.icon-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;

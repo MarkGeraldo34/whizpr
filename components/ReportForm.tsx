@@ -115,11 +115,39 @@ export function ReportForm() {
       />
 
       <div className="row" style={{ marginBottom: 14 }}>
-        <button type="button" className="ghost" onClick={() => photoCaptureRef.current?.click()}>
-          📷 Take photo
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => photoCaptureRef.current?.click()}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+        >
+          <span className="icon-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="12" cy="13" r="3.2" stroke="currentColor" strokeWidth="1.8" />
+            </svg>
+          </span>
+          Take photo
         </button>
-        <button type="button" className="ghost" onClick={() => videoCaptureRef.current?.click()}>
-          🎥 Record video
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => videoCaptureRef.current?.click()}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+        >
+          <span className="icon-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="7" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              <path d="M15 10.5 21 7v10l-6-3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            </svg>
+          </span>
+          Record video
         </button>
         <button type="button" className="ghost" onClick={() => libraryPickerRef.current?.click()}>
           Choose from library
