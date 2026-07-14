@@ -6,6 +6,7 @@ import { DepositPanel } from '@/components/DepositPanel';
 import { ReportForm } from '@/components/ReportForm';
 import { ReportFormPreview } from '@/components/ReportFormPreview';
 import { AboutExplainer } from '@/components/AboutExplainer';
+import { CountryLeaderboard } from '@/components/CountryLeaderboard';
 
 export default function Home() {
   const [address, setAddress] = useState<string | null>(null);
@@ -30,6 +31,8 @@ export default function Home() {
       <p className="muted" style={{ marginBottom: 24 }}>
         Real-time public safety alerts, backed by a prepaid on-chain USDT balance.
       </p>
+
+      <CountryLeaderboard />
 
       {!address && (
         <>

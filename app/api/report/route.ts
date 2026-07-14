@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionCookieValue, sessionCookieName } from '@/lib/siwe-session';
 import { debitForUsage, creditDeposit } from '@/lib/ledger';
 import { storeEmergencyMedia } from '@/lib/media-storage';
+import { reverseGeocodeCountry } from '@/lib/geocode';
+import { recordReport } from '@/lib/reports-store';
 
 // Cost per emergency alert, denominated in the smallest USDT unit tracked
 // by the ledger. Adjust to your actual pricing model.
@@ -56,12 +58,27 @@ export async function POST(req: NextRequest) {
   // payment/auth/storage path can be tested end-to-end; responder matching
   // is the next piece to build.
 
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+  const { countryCode, countryName } = await reverseGeocodeCountry(latNum, lngNum);
+
+  recordReport({
+    id: crypto.randomUUID(),
+    reporterAddress: session.address,
+    lat: latNum,
+    lng: lngNum,
+    countryCode,
+    countryName,
+    createdAt: Date.now(),
+  });
+
   return NextResponse.json({
     ok: true,
     remainingBalance: debit.balance.toString(),
     alert: {
       lat: String(lat),
       lng: String(lng),
+      country: countryName,
       description: description ? String(description) : null,
       media: {
         pathname: stored.pathname,
