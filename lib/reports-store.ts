@@ -13,6 +13,7 @@ export interface StoredReport {
   lng: number;
   countryCode: string | null;
   countryName: string | null;
+  casualties: number;
   createdAt: number;
 }
 

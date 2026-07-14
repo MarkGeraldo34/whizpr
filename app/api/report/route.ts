@@ -20,12 +20,17 @@ export async function POST(req: NextRequest) {
   const lat = formData.get('lat');
   const lng = formData.get('lng');
   const description = formData.get('description');
+  const casualtiesRaw = formData.get('casualties');
 
   if (!media || !(media instanceof File)) {
     return NextResponse.json({ error: 'Emergency media file is required' }, { status: 400 });
   }
   if (!lat || !lng) {
     return NextResponse.json({ error: 'Location (lat/lng) is required' }, { status: 400 });
+  }
+  const casualties = casualtiesRaw === null ? 0 : Number(casualtiesRaw);
+  if (!Number.isInteger(casualties) || casualties < 0) {
+    return NextResponse.json({ error: 'Number of people affected must be a non-negative integer' }, { status: 400 });
   }
 
   // Debit before storing: an alert the user can't pay for shouldn't consume
@@ -69,6 +74,7 @@ export async function POST(req: NextRequest) {
     lng: lngNum,
     countryCode,
     countryName,
+    casualties,
     createdAt: Date.now(),
   });
 
@@ -79,6 +85,7 @@ export async function POST(req: NextRequest) {
       lat: String(lat),
       lng: String(lng),
       country: countryName,
+      casualties,
       description: description ? String(description) : null,
       media: {
         pathname: stored.pathname,

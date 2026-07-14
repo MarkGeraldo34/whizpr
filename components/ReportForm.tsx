@@ -1,17 +1,53 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { reverseGeocodeCountry } from '@/lib/geocode';
 
 export function ReportForm() {
   const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<'idle' | 'locating' | 'submitting' | 'ok' | 'error'>('idle');
+  const [casualties, setCasualties] = useState('0');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'ok' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'locating' | 'ok' | 'error'>('idle');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const photoCaptureRef = useRef<HTMLInputElement>(null);
   const videoCaptureRef = useRef<HTMLInputElement>(null);
   const libraryPickerRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  function detectLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus('error');
+      setLocationError('Geolocation is not supported on this device.');
+      return;
+    }
+    setLocationStatus('locating');
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setCoords({ lat, lng });
+        try {
+          const { countryName } = await reverseGeocodeCountry(lat, lng);
+          setLocationLabel(countryName);
+        } catch {
+          setLocationLabel(null);
+        }
+        setLocationStatus('ok');
+      },
+      () => {
+        setLocationStatus('error');
+        setLocationError('Location access was denied. Enable location permissions and try again.');
+      },
+    );
+  }
 
   function pickFile(next: File | null) {
     setPreviewUrl((prev) => {
@@ -34,39 +70,44 @@ export function ReportForm() {
       setMessage('Attach a photo or video of the emergency first.');
       return;
     }
+    if (!coords) {
+      setMessage('Use the location button to attach your location first.');
+      return;
+    }
+    const casualtyCount = Number(casualties);
+    if (!Number.isInteger(casualtyCount) || casualtyCount < 0) {
+      setMessage('Enter a valid number of people affected (0 or more).');
+      return;
+    }
 
-    setStatus('locating');
+    setStatus('submitting');
     setMessage(null);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        setStatus('submitting');
-        try {
-          const formData = new FormData();
-          formData.append('media', file);
-          formData.append('lat', String(position.coords.latitude));
-          formData.append('lng', String(position.coords.longitude));
-          formData.append('description', description);
+    try {
+      const formData = new FormData();
+      formData.append('media', file);
+      formData.append('lat', String(coords.lat));
+      formData.append('lng', String(coords.lng));
+      formData.append('description', description);
+      formData.append('casualties', String(casualtyCount));
 
-          const res = await fetch('/api/report', { method: 'POST', body: formData });
-          const data = await res.json();
+      const res = await fetch('/api/report', { method: 'POST', body: formData });
+      const data = await res.json();
 
-          if (!res.ok) throw new Error(data.error ?? 'Submission failed');
+      if (!res.ok) throw new Error(data.error ?? 'Submission failed');
 
-          setStatus('ok');
-          setMessage('Alert sent to nearby responders.');
-          clearFile();
-          setDescription('');
-        } catch (err) {
-          setStatus('error');
-          setMessage(err instanceof Error ? err.message : 'Submission failed');
-        }
-      },
-      () => {
-        setStatus('error');
-        setMessage('Location access is required to alert nearby responders.');
-      },
-    );
+      setStatus('ok');
+      setMessage('Alert sent to nearby responders.');
+      clearFile();
+      setDescription('');
+      setCasualties('0');
+      setCoords(null);
+      setLocationLabel(null);
+      setLocationStatus('idle');
+    } catch (err) {
+      setStatus('error');
+      setMessage(err instanceof Error ? err.message : 'Submission failed');
+    }
   }
 
   return (
@@ -180,6 +221,53 @@ export function ReportForm() {
         </div>
       )}
 
+      <label>Location</label>
+      <div className="row" style={{ marginBottom: 4, alignItems: 'center' }}>
+        <button
+          type="button"
+          className="ghost"
+          onClick={detectLocation}
+          disabled={locationStatus === 'locating'}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+        >
+          <span className="icon-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+              <circle cx="12" cy="9" r="2.3" stroke="currentColor" strokeWidth="1.8" />
+            </svg>
+          </span>
+          {locationStatus === 'locating' ? 'Detecting…' : coords ? 'Update location' : 'Use my location'}
+        </button>
+        {coords && (
+          <span className="muted">
+            {locationLabel ?? 'Location detected'} ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
+          </span>
+        )}
+      </div>
+      {locationStatus === 'error' && locationError ? (
+        <p className="status-text error" style={{ marginTop: 0, marginBottom: 14 }}>
+          {locationError}
+        </p>
+      ) : (
+        <div style={{ marginBottom: 14 }} />
+      )}
+
+      <label htmlFor="casualties">Number of people affected</label>
+      <input
+        id="casualties"
+        type="number"
+        min={0}
+        step={1}
+        inputMode="numeric"
+        value={casualties}
+        onChange={(e) => setCasualties(e.target.value)}
+      />
+
       <label htmlFor="description">What's happening?</label>
       <textarea
         id="description"
@@ -189,10 +277,8 @@ export function ReportForm() {
         onChange={(e) => setDescription(e.target.value)}
       />
 
-      <button className="alert" onClick={submitReport} disabled={status === 'submitting' || status === 'locating'}>
-        {status === 'locating' && 'Getting your location...'}
-        {status === 'submitting' && 'Sending alert...'}
-        {(status === 'idle' || status === 'ok' || status === 'error') && 'Send emergency alert'}
+      <button className="alert" onClick={submitReport} disabled={status === 'submitting'}>
+        {status === 'submitting' ? 'Sending alert...' : 'Send emergency alert'}
       </button>
 
       {message && (
