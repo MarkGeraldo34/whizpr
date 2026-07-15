@@ -38,7 +38,7 @@ export default function Home() {
         />
       </div>
 
-      <NavTabs active={tab} onChange={setTab} />
+      {address && <NavTabs active={tab} onChange={setTab} />}
 
       <p className="muted" style={{ marginBottom: 24 }}>
         Real-time public safety alerts, backed by a prepaid on-chain USDT balance.
