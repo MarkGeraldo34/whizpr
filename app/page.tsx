@@ -46,12 +46,9 @@ export default function Home() {
         Instead of watching or recording that dangerous incident aimlessly, submit it and create quick awareness
       </p>
 
-      {tab === 'leaderboard' && (
-        <>
-          <LiveFeed />
-          <CountryLeaderboard />
-        </>
-      )}
+      {tab === 'feed' && <LiveFeed />}
+
+      {tab === 'leaderboard' && <CountryLeaderboard />}
 
       {tab === 'report' && !address && (
         <>
