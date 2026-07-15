@@ -102,6 +102,65 @@ main {
   gap: 12px;
 }
 
+.nav-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 5px;
+  margin-bottom: 22px;
+}
+
+.nav-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 10px;
+  border-radius: calc(var(--radius-md) - 4px);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.nav-tab svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.nav-tab:hover:not(:disabled):not(.active) {
+  color: var(--text);
+  filter: none;
+  transform: none;
+}
+
+.nav-tab.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #241005;
+  box-shadow: 0 4px 12px -4px rgba(241, 132, 31, 0.5);
+}
+
+@media (max-width: 420px) {
+  .nav-tab {
+    font-size: 0;
+    gap: 0;
+    padding: 10px;
+  }
+
+  .nav-tab svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+
 .wallet-widget {
   position: relative;
   display: flex;
