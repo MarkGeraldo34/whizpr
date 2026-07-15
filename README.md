@@ -19,16 +19,23 @@ economy.
   following OKX's standard signing scheme. `getWalletBalance` tries both the
   `/wallet/balance` and `/wallet/balances` path shapes, since OnchainOS has
   used both.
+- **Live feed:** Reports are auto-published — no admin approval gate before
+  they're visible. `GET /api/feed` (public, no auth) returns recent reports
+  with reporter identity and media stripped out (`lib/reports-store.ts`'s
+  `getPublicFeed`), rendered by `components/LiveFeed.tsx`. The country
+  leaderboard counts everything on the feed the same way.
 - **Content moderation:** Whizpr is for genuine hazard/emergency footage
   only. Uploads are restricted to image/video MIME types and videos over 30
-  seconds are rejected client-side. Every submitted report is queued for
-  human review (`lib/reports-store.ts`'s `moderationStatus`); admins — wallet
-  addresses listed in `ADMIN_ADDRESSES` — review via `/api/moderation/reports`
-  and `/api/moderation/reports/[id]/action`, and can penalize a violator by
-  force-deducting Whizcredits (`lib/ledger.ts`'s `penalizeCredits`) or
-  banning their address (`lib/moderation-store.ts`), which blocks further
-  report submissions. There's no admin UI yet — the moderation endpoints are
-  API-only for now.
+  seconds are rejected client-side. Admins — wallet addresses listed in
+  `ADMIN_ADDRESSES` — review submissions after the fact via
+  `/api/moderation/reports` and `/api/moderation/reports/[id]/action`. An
+  admin can `delete` an irrelevant/inappropriate report, which removes it
+  from the public feed and leaderboard (the underlying record is kept for
+  audit, not hard-deleted), and independently apply a penalty — force-
+  deducting Whizcredits (`lib/ledger.ts`'s `penalizeCredits`) or banning the
+  reporter's address (`lib/moderation-store.ts`), which blocks further
+  submissions with a clear error. There's no admin UI yet — the moderation
+  endpoints are API-only for now.
 - **Stack:** Next.js 14 App Router, TypeScript, Wagmi v2, viem, deployed to
   Vercel.
 

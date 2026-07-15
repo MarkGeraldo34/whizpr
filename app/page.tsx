@@ -7,6 +7,7 @@ import { ReportForm } from '@/components/ReportForm';
 import { ReportFormPreview } from '@/components/ReportFormPreview';
 import { AboutExplainer } from '@/components/AboutExplainer';
 import { CountryLeaderboard } from '@/components/CountryLeaderboard';
+import { LiveFeed } from '@/components/LiveFeed';
 import { ProfileTab } from '@/components/ProfileTab';
 import { NavTabs, type TabKey } from '@/components/NavTabs';
 import { ContentPolicyNotice } from '@/components/ContentPolicyNotice';
@@ -45,7 +46,12 @@ export default function Home() {
         Instead of watching or recording that dangerous incident aimlessly, submit it and create quick awareness
       </p>
 
-      {tab === 'leaderboard' && <CountryLeaderboard />}
+      {tab === 'leaderboard' && (
+        <>
+          <LiveFeed />
+          <CountryLeaderboard />
+        </>
+      )}
 
       {tab === 'report' && !address && (
         <>

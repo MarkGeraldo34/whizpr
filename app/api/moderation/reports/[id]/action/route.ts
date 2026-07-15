@@ -6,17 +6,24 @@ import { banAddress } from '@/lib/moderation-store';
 import { penalizeCredits } from '@/lib/ledger';
 
 /**
- * Admin-only moderation action on a single report.
+ * Admin-only moderation action on a single report. Reports are auto-
+ * published (no approval needed), so this endpoint only ever removes a
+ * report after the fact and/or penalizes its submitter — it never blocks a
+ * submission from going out.
  *
  * body: { action: 'approve' }
- *   — no penalty, just marks the report as reviewed and compliant.
+ *   — marks the report as reviewed and compliant; stays on the public feed.
  *
- * body: { action: 'violation', penalty: 'ban' }
- *   — bans the reporter's wallet address from submitting further reports.
+ * body: { action: 'delete' }
+ *   — removes an irrelevant/inappropriate report from the public feed and
+ *     leaderboard. No penalty by itself (e.g. an honest mistake).
  *
- * body: { action: 'violation', penalty: 'credits', creditsToDeduct: number }
- *   — force-deducts Whizcredits from the reporter as a penalty (does not
- *     also ban them).
+ * body: { action: 'delete', penalty: 'ban' }
+ *   — deletes the report AND bans the reporter's wallet address from
+ *     submitting further reports.
+ *
+ * body: { action: 'delete', penalty: 'credits', creditsToDeduct: number }
+ *   — deletes the report AND force-deducts Whizcredits from the reporter.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = verifySessionCookieValue(req.cookies.get(sessionCookieName)?.value);
@@ -37,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ ok: true, report: updated });
   }
 
-  if (action === 'violation') {
+  if (action === 'delete') {
     const penalty = body.penalty;
 
     if (penalty === 'ban') {
@@ -56,16 +63,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         amount,
         `Moderation penalty: content policy violation on report ${report.id}`,
       );
-    } else {
+    } else if (penalty !== undefined) {
       return NextResponse.json(
-        { error: 'penalty must be "ban" or "credits" when action is "violation"' },
+        { error: 'penalty, if provided, must be "ban" or "credits"' },
         { status: 400 },
       );
     }
 
-    const updated = setModerationStatus(report.id, 'violation');
+    const updated = setModerationStatus(report.id, 'removed');
     return NextResponse.json({ ok: true, report: updated });
   }
 
-  return NextResponse.json({ error: 'action must be "approve" or "violation"' }, { status: 400 });
+  return NextResponse.json({ error: 'action must be "approve" or "delete"' }, { status: 400 });
 }
