@@ -42,7 +42,7 @@ export default function Home() {
       {address && <NavTabs active={tab} onChange={setTab} />}
 
       <p className="muted" style={{ marginBottom: 24 }}>
-        Real-time public safety alerts, backed by a prepaid on-chain USDT balance.
+        Instead of watching or recording that dangerous incident aimlessly, submit it and create quick awareness
       </p>
 
       {tab === 'leaderboard' && <CountryLeaderboard />}
