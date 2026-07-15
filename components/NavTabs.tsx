@@ -1,6 +1,6 @@
 'use client';
 
-export type TabKey = 'report' | 'leaderboard' | 'profile';
+export type TabKey = 'report' | 'deposit' | 'leaderboard' | 'profile';
 
 const TABS: Array<{ key: TabKey; label: string; icon: JSX.Element }> = [
   {
@@ -14,6 +14,21 @@ const TABS: Array<{ key: TabKey; label: string; icon: JSX.Element }> = [
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    key: 'deposit',
+    label: 'Deposit',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+        <path
+          d="M12 7v10M9.5 9.5c0-1.1 1.12-2 2.5-2s2.5.9 2.5 2c0 2.5-5 1.5-5 4 0 1.1 1.12 2 2.5 2s2.5-.9 2.5-2"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
         />
       </svg>
     ),

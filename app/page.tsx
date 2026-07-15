@@ -53,36 +53,62 @@ export default function Home() {
         </>
       )}
 
-      {tab === 'report' && address && (
-        <>
+      {tab === 'report' && address && <ReportForm />}
+
+      {tab === 'deposit' &&
+        (address ? (
           <DepositPanel />
-          <ReportForm />
-        </>
-      )}
+        ) : (
+          <ConnectGate
+            title="Deposit"
+            message="Connect your wallet above to top up your Whizcredits balance."
+            icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+                <path
+                  d="M12 7v10M9.5 9.5c0-1.1 1.12-2 2.5-2s2.5.9 2.5 2c0 2.5-5 1.5-5 4 0 1.1 1.12 2 2.5 2s2.5-.9 2.5-2"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            }
+          />
+        ))}
 
       {tab === 'profile' &&
         (address ? (
           <ProfileTab />
         ) : (
-          <div className="card">
-            <div className="card-title">
-              <span className="icon-badge">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.8" />
-                  <path
-                    d="M4.5 20c1.4-3.6 4.5-5.5 7.5-5.5s6.1 1.9 7.5 5.5"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              Profile
-            </div>
-            <p className="muted">Connect your wallet above to view your Whizcredits balance and username.</p>
-          </div>
+          <ConnectGate
+            title="Profile"
+            message="Connect your wallet above to view your Whizcredits balance and username."
+            icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.8" />
+                <path
+                  d="M4.5 20c1.4-3.6 4.5-5.5 7.5-5.5s6.1 1.9 7.5 5.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            }
+          />
         ))}
     </main>
+  );
+}
+
+function ConnectGate({ title, message, icon }: { title: string; message: string; icon: React.ReactNode }) {
+  return (
+    <div className="card">
+      <div className="card-title">
+        <span className="icon-badge">{icon}</span>
+        {title}
+      </div>
+      <p className="muted">{message}</p>
+    </div>
   );
 }
