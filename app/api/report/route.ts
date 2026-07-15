@@ -5,11 +5,40 @@ import { storeEmergencyMedia } from '@/lib/media-storage';
 import { reverseGeocodeCountry } from '@/lib/geocode';
 import { recordReport } from '@/lib/reports-store';
 import { ALERT_COST_WHIZCREDITS } from '@/lib/pricing';
+import { isBanned, getBan } from '@/lib/moderation-store';
+import { MAX_VIDEO_SECONDS } from '@/lib/content-policy';
+
+// Whizpr is for genuine hazard/emergency evidence only — reject arbitrary
+// file types outright. This is a basic technical guardrail; the actual
+// "is this really a hazard, not nudity/a selfie/an unrelated vlog" judgment
+// happens in the human moderation review (see /api/moderation/reports).
+const ALLOWED_MEDIA_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+]);
 
 export async function POST(req: NextRequest) {
   const session = verifySessionCookieValue(req.cookies.get(sessionCookieName)?.value);
   if (!session) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  if (isBanned(session.address)) {
+    const ban = getBan(session.address);
+    return NextResponse.json(
+      {
+        error:
+          'Your account has been banned for violating Whizpr’s content policy (submitting unrelated or ' +
+          `inappropriate media instead of genuine hazard footage).${ban ? ` Reason: ${ban.reason}` : ''}`,
+      },
+      { status: 403 },
+    );
   }
 
   const formData = await req.formData();
@@ -18,9 +47,25 @@ export async function POST(req: NextRequest) {
   const lng = formData.get('lng');
   const description = formData.get('description');
   const casualtiesRaw = formData.get('casualties');
+  const clientVideoDurationRaw = formData.get('videoDurationSeconds');
 
   if (!media || !(media instanceof File)) {
     return NextResponse.json({ error: 'Emergency media file is required' }, { status: 400 });
+  }
+  if (!ALLOWED_MEDIA_TYPES.has(media.type)) {
+    return NextResponse.json(
+      { error: 'Only photo or video files of a genuine hazard/emergency are accepted.' },
+      { status: 400 },
+    );
+  }
+  if (media.type.startsWith('video/') && clientVideoDurationRaw) {
+    const clientVideoDuration = Number(clientVideoDurationRaw);
+    if (Number.isFinite(clientVideoDuration) && clientVideoDuration > MAX_VIDEO_SECONDS) {
+      return NextResponse.json(
+        { error: `Videos must be ${MAX_VIDEO_SECONDS} seconds or shorter.` },
+        { status: 400 },
+      );
+    }
   }
   if (!lat || !lng) {
     return NextResponse.json({ error: 'Location (lat/lng) is required' }, { status: 400 });
@@ -72,6 +117,9 @@ export async function POST(req: NextRequest) {
     countryCode,
     countryName,
     casualties,
+    description: description ? String(description) : null,
+    media: { url: stored.url, pathname: stored.pathname, contentType: stored.contentType },
+    moderationStatus: 'unreviewed',
     createdAt: Date.now(),
   });
 

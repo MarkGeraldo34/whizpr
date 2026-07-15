@@ -2,9 +2,28 @@
 
 import { useRef, useState } from 'react';
 import { reverseGeocodeCountry } from '@/lib/geocode';
+import { MAX_VIDEO_SECONDS } from '@/lib/content-policy';
+import { ContentPolicyNotice } from './ContentPolicyNotice';
+
+function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error('Could not read video metadata'));
+    };
+    video.src = URL.createObjectURL(file);
+  });
+}
 
 export function ReportForm() {
   const [file, setFile] = useState<File | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [casualties, setCasualties] = useState('0');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'ok' | 'error'>('idle');
@@ -49,7 +68,27 @@ export function ReportForm() {
     );
   }
 
-  function pickFile(next: File | null) {
+  async function pickFile(next: File | null) {
+    if (next && next.type.startsWith('video/')) {
+      try {
+        const duration = await readVideoDuration(next);
+        if (duration > MAX_VIDEO_SECONDS) {
+          setMessage(
+            `Videos must be ${MAX_VIDEO_SECONDS} seconds or shorter (this one is ${Math.round(duration)}s).`,
+          );
+          return;
+        }
+        setVideoDuration(duration);
+      } catch {
+        // If duration can't be read, don't block a legitimate short clip on
+        // a metadata-parsing hiccup — the policy notice still applies, and
+        // moderation review catches anything that slips through.
+        setVideoDuration(null);
+      }
+    } else {
+      setVideoDuration(null);
+    }
+
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return next ? URL.createObjectURL(next) : null;
@@ -90,6 +129,9 @@ export function ReportForm() {
       formData.append('lng', String(coords.lng));
       formData.append('description', description);
       formData.append('casualties', String(casualtyCount));
+      if (videoDuration !== null) {
+        formData.append('videoDurationSeconds', String(videoDuration));
+      }
 
       const res = await fetch('/api/report', { method: 'POST', body: formData });
       const data = await res.json();
@@ -111,7 +153,9 @@ export function ReportForm() {
   }
 
   return (
-    <div className="card">
+    <>
+      <ContentPolicyNotice />
+      <div className="card">
       <div className="card-title alert-title">
         <span className="icon-badge">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -286,6 +330,7 @@ export function ReportForm() {
           {message}
         </p>
       )}
-    </div>
+      </div>
+    </>
   );
 }

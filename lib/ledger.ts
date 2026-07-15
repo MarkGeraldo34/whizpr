@@ -58,6 +58,28 @@ export async function debitForUsage(
   return { ok: true, balance: entry.balance };
 }
 
+/**
+ * Force-deducts Whizcredits as a moderation penalty for a policy violation
+ * (e.g. submitting unrelated/inappropriate media). Unlike debitForUsage,
+ * this doesn't fail on insufficient balance — a penalty shouldn't be
+ * skippable just because the violator doesn't have enough to "afford" it;
+ * it simply clamps at zero.
+ */
+export async function penalizeCredits(
+  address: `0x${string}`,
+  amount: bigint,
+  reason: string,
+): Promise<bigint> {
+  const key = keyFor(address);
+  const entry = inMemoryLedger.get(key) ?? { balance: 0n, history: [] };
+  const deducted = entry.balance < amount ? entry.balance : amount;
+
+  entry.balance -= deducted;
+  entry.history.push({ type: 'debit', amount: deducted, reason, at: Date.now() });
+  inMemoryLedger.set(key, entry);
+  return entry.balance;
+}
+
 // Prevent double-crediting the same on-chain deposit transaction twice.
 const processedDeposits = new Set<string>();
 

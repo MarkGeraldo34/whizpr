@@ -9,6 +9,7 @@ import { AboutExplainer } from '@/components/AboutExplainer';
 import { CountryLeaderboard } from '@/components/CountryLeaderboard';
 import { ProfileTab } from '@/components/ProfileTab';
 import { NavTabs, type TabKey } from '@/components/NavTabs';
+import { ContentPolicyNotice } from '@/components/ContentPolicyNotice';
 
 export default function Home() {
   const [address, setAddress] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export default function Home() {
 
       {tab === 'report' && !address && (
         <>
+          <ContentPolicyNotice />
           <ReportFormPreview />
           <AboutExplainer />
         </>

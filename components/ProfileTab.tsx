@@ -6,6 +6,8 @@ interface Profile {
   address: string;
   username: string | null;
   whizcredits: string;
+  banned: boolean;
+  banReason: string | null;
 }
 
 export function ProfileTab() {
@@ -74,6 +76,14 @@ export function ProfileTab() {
         </span>
         Profile
       </div>
+
+      {profile?.banned && (
+        <p className="status-text error" style={{ marginTop: 0 }}>
+          Your account is banned for violating Whizpr’s content policy
+          {profile.banReason ? `: ${profile.banReason}` : ''}. You can no longer submit emergency
+          reports.
+        </p>
+      )}
 
       <label>Whizcredits balance</label>
       <div className="balance-display">{profile ? `${profile.whizcredits} Whizcredits` : '—'}</div>

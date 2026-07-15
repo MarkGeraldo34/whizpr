@@ -19,6 +19,16 @@ economy.
   following OKX's standard signing scheme. `getWalletBalance` tries both the
   `/wallet/balance` and `/wallet/balances` path shapes, since OnchainOS has
   used both.
+- **Content moderation:** Whizpr is for genuine hazard/emergency footage
+  only. Uploads are restricted to image/video MIME types and videos over 30
+  seconds are rejected client-side. Every submitted report is queued for
+  human review (`lib/reports-store.ts`'s `moderationStatus`); admins — wallet
+  addresses listed in `ADMIN_ADDRESSES` — review via `/api/moderation/reports`
+  and `/api/moderation/reports/[id]/action`, and can penalize a violator by
+  force-deducting Whizcredits (`lib/ledger.ts`'s `penalizeCredits`) or
+  banning their address (`lib/moderation-store.ts`), which blocks further
+  report submissions. There's no admin UI yet — the moderation endpoints are
+  API-only for now.
 - **Stack:** Next.js 14 App Router, TypeScript, Wagmi v2, viem, deployed to
   Vercel.
 
@@ -64,6 +74,8 @@ npm run dev
      `OKX_ONCHAINOS_API_SECRET`, `OKX_ONCHAINOS_API_PASSPHRASE`
    - `LEDGER_DATABASE_URL` (once you've wired up real storage)
    - `BLOB_READ_WRITE_TOKEN` (if using Vercel Blob for media uploads)
+   - `ADMIN_ADDRESSES` (wallets allowed to review reports and apply
+     moderation penalties)
 
    Vercel encrypts these at rest; none of them should be committed to git.
 
@@ -77,10 +89,18 @@ npm run dev
 
 ## Known gaps / next steps
 
-- Ledger is in-memory only — needs a real database before production traffic.
-- Emergency media isn't persisted yet (`app/api/report/route.ts` has a TODO)
-  — wire up Vercel Blob or another object store.
+- Ledger, reports, profiles, bans, and moderation state are all in-memory
+  only — need a real database before production traffic.
 - No responder-side "nearby alerts" view yet — this scaffold covers the
   reporter-side auth → deposit → alert flow only.
 - WalletConnect is optional; set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` to
   enable it alongside the injected-wallet connector.
+- No admin UI for the moderation queue yet — `/api/moderation/reports` and
+  `/api/moderation/reports/[id]/action` are API-only. Private Blob media
+  (uploaded with `access: 'private'`) also has no authenticated viewer route
+  yet, so reviewing the actual footage currently requires fetching it
+  server-side with the Blob token.
+- The 30-second video cap is enforced client-side (and the server checks the
+  client-reported duration when present); there's no server-side media
+  parsing, so a deliberately crafted request could bypass it — moderation
+  review is the backstop.
