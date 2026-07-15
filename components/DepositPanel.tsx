@@ -62,6 +62,7 @@ export function DepositPanel() {
 
       setStatus('ok');
       setBalance(data.balance);
+      setMessage(`+${data.creditedWhizcredits} Whizcredits credited.`);
       setTxHash('');
     } catch (err) {
       setStatus('error');
@@ -83,9 +84,9 @@ export function DepositPanel() {
             />
           </svg>
         </span>
-        Prepaid balance
+        Whizcredits balance
       </div>
-      <div className="balance-display">{balance !== null ? `${balance} wei` : '—'}</div>
+      <div className="balance-display">{balance !== null ? `${balance} Whizcredits` : '—'}</div>
 
       <label>
         Deposit address {CHAIN_NAME ? `(${CHAIN_NAME})` : CHAIN_ID && `(chain ${CHAIN_ID})`}
@@ -103,8 +104,10 @@ export function DepositPanel() {
             network (Ethereum, BSC, etc.) will not be credited and cannot be recovered.
           </p>
           <p className="muted" style={{ marginBottom: 14 }}>
-            Send USDT to this address, then paste the transaction hash below to credit your
-            prepaid balance.
+            Send USDT to this address, then paste the transaction hash below. USDT converts to
+            Whizcredits automatically — 1 USDT = 50 Whizcredits (2 USDT = 100 Whizcredits) — and
+            each emergency alert costs 5 Whizcredits. There&rsquo;s no subscription or expiry; top
+            up again whenever your balance runs low.
           </p>
         </>
       ) : (

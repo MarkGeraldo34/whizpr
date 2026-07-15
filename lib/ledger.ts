@@ -1,11 +1,14 @@
 /**
- * Server-side prepaid USDT ledger.
+ * Server-side prepaid Whizcredits ledger.
  *
- * This module exposes a small interface (getBalance / credit / debit) so the
- * rest of the app never touches storage directly. The in-memory Map below is
- * only suitable for local dev / a single serverless instance's lifetime —
- * for production, wire LEDGER_DATABASE_URL up to a real database (Vercel
- * Postgres, Neon, etc.) behind this same interface.
+ * Balances are tracked in Whizcredits (Whizpr's internal usage unit), not
+ * raw USDT — callers convert verified USDT deposits via lib/pricing.ts
+ * before crediting. This module exposes a small interface (getBalance /
+ * credit / debit) so the rest of the app never touches storage directly.
+ * The in-memory Map below is only suitable for local dev / a single
+ * serverless instance's lifetime — for production, wire LEDGER_DATABASE_URL
+ * up to a real database (Vercel Postgres, Neon, etc.) behind this same
+ * interface.
  */
 
 interface LedgerEntry {
@@ -27,7 +30,7 @@ export async function getBalance(address: `0x${string}`): Promise<bigint> {
 export async function creditDeposit(
   address: `0x${string}`,
   amount: bigint,
-  reason = 'on-chain USDT deposit',
+  reason = 'on-chain USDT deposit converted to Whizcredits',
 ): Promise<bigint> {
   const key = keyFor(address);
   const entry = inMemoryLedger.get(key) ?? { balance: 0n, history: [] };

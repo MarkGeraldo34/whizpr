@@ -4,10 +4,7 @@ import { debitForUsage, creditDeposit } from '@/lib/ledger';
 import { storeEmergencyMedia } from '@/lib/media-storage';
 import { reverseGeocodeCountry } from '@/lib/geocode';
 import { recordReport } from '@/lib/reports-store';
-
-// Cost per emergency alert, denominated in the smallest USDT unit tracked
-// by the ledger. Adjust to your actual pricing model.
-const ALERT_COST = 1_000_000_000_000_000n; // 0.001 USDT (18 decimals)
+import { ALERT_COST_WHIZCREDITS } from '@/lib/pricing';
 
 export async function POST(req: NextRequest) {
   const session = verifySessionCookieValue(req.cookies.get(sessionCookieName)?.value);
@@ -35,10 +32,10 @@ export async function POST(req: NextRequest) {
 
   // Debit before storing: an alert the user can't pay for shouldn't consume
   // Blob storage or reach responders in the first place.
-  const debit = await debitForUsage(session.address, ALERT_COST, 'emergency alert submission');
+  const debit = await debitForUsage(session.address, ALERT_COST_WHIZCREDITS, 'emergency alert submission');
   if (!debit.ok) {
     return NextResponse.json(
-      { error: 'Insufficient prepaid balance. Deposit USDT before submitting an alert.' },
+      { error: 'Insufficient Whizcredits. Deposit USDT to top up before submitting an alert.' },
       { status: 402 },
     );
   }
@@ -49,7 +46,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     // The user has already been debited for a submission that can't be
     // completed — refund immediately rather than silently eating the cost.
-    await creditDeposit(session.address, ALERT_COST, 'refund: media storage failed').catch(() => {
+    await creditDeposit(session.address, ALERT_COST_WHIZCREDITS, 'refund: media storage failed').catch(() => {
       // Best-effort refund; if this also fails it needs manual reconciliation.
     });
     return NextResponse.json(
@@ -80,7 +77,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    remainingBalance: debit.balance.toString(),
+    remainingWhizcredits: debit.balance.toString(),
     alert: {
       lat: String(lat),
       lng: String(lng),

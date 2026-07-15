@@ -130,7 +130,7 @@ const STEPS = [
   },
   {
     title: 'Prepay in USDT',
-    body: 'Top up a small prepaid balance in USDT before anything happens. There’s no subscription and nothing is charged until you actually send an alert — the deposit just sits ready, verified on-chain.',
+    body: 'Top up your Whizcredits balance with USDT before anything happens — 2 USDT converts to 100 Whizcredits, and each alert costs 5. There’s no subscription and nothing is charged until you actually send an alert; the deposit just sits ready, verified on-chain.',
     illustration: IllustrationPrepay,
   },
   {

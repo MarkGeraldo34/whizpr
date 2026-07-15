@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionCookieValue, sessionCookieName } from '@/lib/siwe-session';
 import { verifyUsdtDeposit } from '@/lib/viem-server';
 import { creditDeposit, hasProcessedDeposit, markDepositProcessed } from '@/lib/ledger';
+import { usdtToWhizcredits } from '@/lib/pricing';
 
 export async function POST(req: NextRequest) {
   const session = verifySessionCookieValue(req.cookies.get(sessionCookieName)?.value);
@@ -31,12 +32,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const creditedWhizcredits = usdtToWhizcredits(result.amount);
+
   markDepositProcessed(txHash);
-  const newBalance = await creditDeposit(session.address, result.amount);
+  const newBalance = await creditDeposit(session.address, creditedWhizcredits);
 
   return NextResponse.json({
     verified: true,
-    credited: result.amount.toString(),
+    usdtAmount: result.amount.toString(),
+    creditedWhizcredits: creditedWhizcredits.toString(),
     balance: newBalance.toString(),
   });
 }
