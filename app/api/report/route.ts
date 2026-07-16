@@ -3,10 +3,12 @@ import { verifySessionCookieValue, sessionCookieName } from '@/lib/siwe-session'
 import { debitForUsage, creditDeposit } from '@/lib/ledger';
 import { storeEmergencyMedia } from '@/lib/media-storage';
 import { reverseGeocodeCountry } from '@/lib/geocode';
-import { recordReport } from '@/lib/reports-store';
+import { recordReport, type StoredReport } from '@/lib/reports-store';
 import { ALERT_COST_WHIZCREDITS } from '@/lib/pricing';
 import { isBanned, getBan } from '@/lib/moderation-store';
 import { MAX_VIDEO_SECONDS } from '@/lib/content-policy';
+import { getRespondersForCountry } from '@/lib/responders-store';
+import { notifyResponders } from '@/lib/email';
 
 // Whizpr is for genuine hazard/emergency evidence only — reject arbitrary
 // file types outright. This is a basic technical guardrail; the actual
@@ -100,16 +102,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // TODO: fan the alert out to nearby responders (geo-matching + delivery).
-  // This scaffold now persists the media and debits the ledger, so the
-  // payment/auth/storage path can be tested end-to-end; responder matching
-  // is the next piece to build.
-
   const latNum = Number(lat);
   const lngNum = Number(lng);
   const { countryCode, countryName } = await reverseGeocodeCountry(latNum, lngNum);
 
-  recordReport({
+  const report: StoredReport = {
     id: crypto.randomUUID(),
     reporterAddress: session.address,
     lat: latNum,
@@ -121,6 +118,16 @@ export async function POST(req: NextRequest) {
     media: { url: stored.url, pathname: stored.pathname, contentType: stored.contentType },
     moderationStatus: 'unreviewed',
     createdAt: Date.now(),
+  };
+  recordReport(report);
+
+  // Best-effort: notify first responders registered for this country by
+  // email. The report is already paid for and stored — an email failure
+  // (missing API key, provider outage, no responders on file for this
+  // country yet) should never undo or block the submission.
+  const responderEmails = getRespondersForCountry(countryCode).map((r) => r.email);
+  notifyResponders(report, responderEmails).catch((err) => {
+    console.error('notifyResponders failed', err);
   });
 
   return NextResponse.json({

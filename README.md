@@ -36,6 +36,17 @@ economy.
   reporter's address (`lib/moderation-store.ts`), which blocks further
   submissions with a clear error. There's no admin UI yet — the moderation
   endpoints are API-only for now.
+- **Responder notification email:** When a report is submitted, its
+  reverse-geocoded country (already computed for the leaderboard) is used to
+  look up first-responder contacts registered for that country
+  (`lib/responders-store.ts`) and email each of them via Resend
+  (`lib/email.ts`). Responders are registered by admins through
+  `/api/admin/responders` (`GET` to list, `POST { email, countryCode,
+  countryName }` to add, `DELETE /api/admin/responders/[id]` to remove) —
+  same `ADMIN_ADDRESSES` gate as moderation. The email send is best-effort:
+  a missing `RESEND_API_KEY`, no responders on file for that country, or a
+  provider outage all just skip/log rather than blocking the report, since
+  the reporter has already been debited and the media already stored.
 - **Stack:** Next.js 14 App Router, TypeScript, Wagmi v2, viem, deployed to
   Vercel.
 
@@ -83,6 +94,8 @@ npm run dev
    - `BLOB_READ_WRITE_TOKEN` (if using Vercel Blob for media uploads)
    - `ADMIN_ADDRESSES` (wallets allowed to review reports and apply
      moderation penalties)
+   - `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (responder notification emails —
+     see "Responder notification email" above)
 
    Vercel encrypts these at rest; none of them should be committed to git.
 
@@ -98,8 +111,10 @@ npm run dev
 
 - Ledger, reports, profiles, bans, and moderation state are all in-memory
   only — need a real database before production traffic.
-- No responder-side "nearby alerts" view yet — this scaffold covers the
-  reporter-side auth → deposit → alert flow only.
+- Responders only get an email notification for now (see "Responder
+  notification email" above) — there's no responder-side dashboard/"nearby
+  alerts" view yet, and no self-serve way for a responder org to register
+  itself (registration is admin-only via `/api/admin/responders`).
 - WalletConnect is optional; set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` to
   enable it alongside the injected-wallet connector.
 - No admin UI for the moderation queue yet — `/api/moderation/reports` and
