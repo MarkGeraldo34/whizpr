@@ -197,6 +197,7 @@ main h1 {
   margin: 0;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  color: var(--alert);
 }
 
 .card {
@@ -235,6 +236,34 @@ main h1 {
 .card-title.alert-title .icon-badge {
   background: rgba(228, 35, 19, 0.14);
   color: var(--alert);
+}
+
+.card-title-toggle {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.card-title-toggle:hover:not(:disabled) {
+  filter: none;
+  transform: none;
+}
+
+.dropdown-chevron {
+  margin-left: auto;
+  color: var(--alert);
+  transition: transform 0.3s var(--ease);
+  flex-shrink: 0;
+}
+
+.dropdown-chevron.open {
+  transform: rotate(180deg);
 }
 
 button {
