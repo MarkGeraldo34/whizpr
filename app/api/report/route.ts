@@ -88,42 +88,49 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Everything below spends the debit that already succeeded above — a
+  // failure anywhere in here (media storage, or the DB write that actually
+  // records the report) must refund, or the user is charged for a
+  // submission that never went anywhere.
   let stored;
+  let report: StoredReport;
   try {
     stored = await storeEmergencyMedia(media, session.address);
+
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+    const descriptionStr = description ? String(description) : null;
+    const { countryCode, countryName } = await reverseGeocodeCountry(latNum, lngNum);
+    const aiTriage = await triageReport(media, descriptionStr);
+
+    report = {
+      id: crypto.randomUUID(),
+      reporterAddress: session.address,
+      lat: latNum,
+      lng: lngNum,
+      countryCode,
+      countryName,
+      casualties,
+      description: descriptionStr,
+      media: { url: stored.url, pathname: stored.pathname, contentType: stored.contentType },
+      moderationStatus: 'unreviewed',
+      createdAt: Date.now(),
+      aiTriage,
+    };
+    await recordReport(report);
   } catch (err) {
     // The user has already been debited for a submission that can't be
     // completed — refund immediately rather than silently eating the cost.
-    await creditDeposit(session.address, ALERT_COST_WHIZCREDITS, 'refund: media storage failed').catch(() => {
+    await creditDeposit(session.address, ALERT_COST_WHIZCREDITS, 'refund: report submission failed').catch(() => {
       // Best-effort refund; if this also fails it needs manual reconciliation.
     });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to store emergency media' },
+      { error: err instanceof Error ? err.message : 'Failed to record emergency report' },
       { status: 502 },
     );
   }
 
-  const latNum = Number(lat);
-  const lngNum = Number(lng);
-  const descriptionStr = description ? String(description) : null;
-  const { countryCode, countryName } = await reverseGeocodeCountry(latNum, lngNum);
-  const aiTriage = await triageReport(media, descriptionStr);
-
-  const report: StoredReport = {
-    id: crypto.randomUUID(),
-    reporterAddress: session.address,
-    lat: latNum,
-    lng: lngNum,
-    countryCode,
-    countryName,
-    casualties,
-    description: descriptionStr,
-    media: { url: stored.url, pathname: stored.pathname, contentType: stored.contentType },
-    moderationStatus: 'unreviewed',
-    createdAt: Date.now(),
-    aiTriage,
-  };
-  await recordReport(report);
+  const { countryCode, countryName, aiTriage } = report;
 
   // Best-effort: notify first responders registered for this country by
   // email. The report is already paid for and stored — an email failure

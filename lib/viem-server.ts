@@ -1,17 +1,31 @@
-import { createPublicClient, http, parseAbi, type Hash } from 'viem';
+import { createPublicClient, http, parseAbi, type Hash, type PublicClient } from 'viem';
 import { targetChain } from './wagmi';
 
-const rpcUrl = process.env.SERVER_RPC_URL ?? process.env.NEXT_PUBLIC_CHAIN_RPC_URL;
+// Constructed lazily, on first actual verification call, rather than at
+// module load — Next.js imports route modules (without invoking their
+// handlers) while collecting page data at build time, and createPublicClient
+// throws immediately if the transport has no URL, which would otherwise fail
+// the production build in any environment where the RPC URL isn't set (or is
+// blank) at build time.
+let client: PublicClient | null = null;
 
-if (!rpcUrl) {
-  // eslint-disable-next-line no-console
-  console.warn('[viem-server] SERVER_RPC_URL is not set — deposit verification will fail.');
+function getServerClient(): PublicClient {
+  if (!client) {
+    // `||`, not `??` — a var that's present but blank (SERVER_RPC_URL="")
+    // should fall through to the next option the same way an unset one does.
+    const rpcUrl = process.env.SERVER_RPC_URL || process.env.NEXT_PUBLIC_CHAIN_RPC_URL;
+    if (!rpcUrl) {
+      throw new Error(
+        'SERVER_RPC_URL (or NEXT_PUBLIC_CHAIN_RPC_URL) is not set — deposit verification cannot connect to the chain.',
+      );
+    }
+    client = createPublicClient({
+      chain: targetChain,
+      transport: http(rpcUrl),
+    });
+  }
+  return client;
 }
-
-export const serverClient = createPublicClient({
-  chain: targetChain,
-  transport: http(rpcUrl),
-});
 
 const erc20TransferAbi = parseAbi([
   'event Transfer(address indexed from, address indexed to, uint256 value)',
@@ -39,6 +53,7 @@ export async function verifyUsdtDeposit(txHash: Hash): Promise<DepositVerificati
     return { verified: false, reason: 'USDT token or deposit address not configured' };
   }
 
+  const serverClient = getServerClient();
   const receipt = await serverClient.getTransactionReceipt({ hash: txHash });
 
   if (receipt.status !== 'success') {
