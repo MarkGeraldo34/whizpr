@@ -8,9 +8,11 @@
  * they submit alerts, and they top up again whenever it runs low.
  */
 
-// USDT token decimals on the deployed chain (X Layer). Adjust if
-// NEXT_PUBLIC_USDT_TOKEN_ADDRESS points at a token with different decimals.
-const USDT_DECIMALS = 18n;
+// USDT token decimals on the deployed chain (X Layer). USDT (and USDT0, its
+// successor on X Layer) uses 6 decimals — not 18 — on every chain it's
+// deployed on. Adjust only if NEXT_PUBLIC_USDT_TOKEN_ADDRESS ever points at a
+// token with genuinely different decimals.
+const USDT_DECIMALS = 6n;
 const USDT_UNIT = 10n ** USDT_DECIMALS;
 
 // 2 USDT buys 100 Whizcredits, i.e. 1 USDT = 50 Whizcredits.
