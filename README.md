@@ -36,6 +36,23 @@ economy.
   reporter's address (`lib/moderation-store.ts`), which blocks further
   submissions with a clear error. There's no admin UI yet — the moderation
   endpoints are API-only for now.
+- **AI triage:** `lib/triage.ts` sends each submitted **photo** (video isn't
+  supported yet — see below) plus the reporter's description to Claude
+  (`claude-opus-4-8`, structured JSON output) and asks it to judge whether
+  the image is genuine hazard footage and, if so, how severe it looks. This
+  runs automatically in `/api/report` before the report is recorded. It's
+  deliberately bounded: the model never deletes a report, bans a reporter, or
+  removes anything from the public feed — that stays human-only via the
+  endpoints above. The only things the triage result does are (1) get stored
+  on the report as `aiTriage` so it's visible to admins reviewing the queue,
+  and (2) suppress the responder-notification email when the model is
+  confident the submission isn't a real hazard, since paging real first
+  responders about a meme or a selfie has a real-world cost that a
+  sitting-in-the-queue report doesn't. Best-effort like the email
+  notification: a missing `ANTHROPIC_API_KEY`, a video submission, or a
+  provider error all just skip triage (`aiTriage: null`, treated as
+  "unknown" — responders are still notified, same as before this existed)
+  rather than blocking the report.
 - **Responder notification email:** When a report is submitted, its
   reverse-geocoded country (already computed for the leaderboard) is used to
   look up first-responder contacts registered for that country
@@ -94,6 +111,7 @@ npm run dev
    - `BLOB_READ_WRITE_TOKEN` (if using Vercel Blob for media uploads)
    - `ADMIN_ADDRESSES` (wallets allowed to review reports and apply
      moderation penalties)
+   - `ANTHROPIC_API_KEY` (AI triage — see "AI triage" above)
    - `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (responder notification emails —
      see "Responder notification email" above)
 

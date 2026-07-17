@@ -19,6 +19,12 @@ export interface StoredReportMedia {
   contentType: string;
 }
 
+export interface StoredReportAiTriage {
+  legitimate: boolean;
+  severity: 'low' | 'medium' | 'high';
+  reasoning: string;
+}
+
 export interface StoredReport {
   id: string;
   reporterAddress: string;
@@ -31,6 +37,11 @@ export interface StoredReport {
   media: StoredReportMedia;
   moderationStatus: ModerationStatus;
   createdAt: number;
+  // Null means triage didn't run (video submission, missing API key, or a
+  // provider error) — treat as "unknown", not "illegitimate". Surfaced to
+  // admins via /api/moderation/reports so they can prioritize their review
+  // queue; never used to auto-remove or auto-ban.
+  aiTriage: StoredReportAiTriage | null;
 }
 
 const reports: StoredReport[] = [];

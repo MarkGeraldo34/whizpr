@@ -9,6 +9,7 @@ import { isBanned, getBan } from '@/lib/moderation-store';
 import { MAX_VIDEO_SECONDS } from '@/lib/content-policy';
 import { getRespondersForCountry } from '@/lib/responders-store';
 import { notifyResponders } from '@/lib/email';
+import { triageReport } from '@/lib/triage';
 
 // Whizpr is for genuine hazard/emergency evidence only — reject arbitrary
 // file types outright. This is a basic technical guardrail; the actual
@@ -104,7 +105,9 @@ export async function POST(req: NextRequest) {
 
   const latNum = Number(lat);
   const lngNum = Number(lng);
+  const descriptionStr = description ? String(description) : null;
   const { countryCode, countryName } = await reverseGeocodeCountry(latNum, lngNum);
+  const aiTriage = await triageReport(media, descriptionStr);
 
   const report: StoredReport = {
     id: crypto.randomUUID(),
@@ -114,21 +117,27 @@ export async function POST(req: NextRequest) {
     countryCode,
     countryName,
     casualties,
-    description: description ? String(description) : null,
+    description: descriptionStr,
     media: { url: stored.url, pathname: stored.pathname, contentType: stored.contentType },
     moderationStatus: 'unreviewed',
     createdAt: Date.now(),
+    aiTriage,
   };
   recordReport(report);
 
   // Best-effort: notify first responders registered for this country by
   // email. The report is already paid for and stored — an email failure
   // (missing API key, provider outage, no responders on file for this
-  // country yet) should never undo or block the submission.
-  const responderEmails = getRespondersForCountry(countryCode).map((r) => r.email);
-  notifyResponders(report, responderEmails).catch((err) => {
-    console.error('notifyResponders failed', err);
-  });
+  // country yet) should never undo or block the submission. Skipped only
+  // when AI triage is confident this isn't a real hazard (aiTriage === null
+  // means triage didn't run — video, no API key, provider error — so we
+  // still notify, same as before triage existed).
+  if (aiTriage === null || aiTriage.legitimate) {
+    const responderEmails = getRespondersForCountry(countryCode).map((r) => r.email);
+    notifyResponders(report, responderEmails).catch((err) => {
+      console.error('notifyResponders failed', err);
+    });
+  }
 
   return NextResponse.json({
     ok: true,
