@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
-  const report = getReportById(params.id);
+  const report = await getReportById(params.id);
   if (!report) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const action = body.action;
 
   if (action === 'approve') {
-    const updated = setModerationStatus(report.id, 'approved');
+    const updated = await setModerationStatus(report.id, 'approved');
     return NextResponse.json({ ok: true, report: updated });
   }
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const penalty = body.penalty;
 
     if (penalty === 'ban') {
-      banAddress(report.reporterAddress, `Content policy violation on report ${report.id}`);
+      await banAddress(report.reporterAddress, `Content policy violation on report ${report.id}`);
     } else if (penalty === 'credits') {
       const requested = Number(body.creditsToDeduct);
       if (!Number.isFinite(requested) || requested <= 0) {
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       );
     }
 
-    const updated = setModerationStatus(report.id, 'removed');
+    const updated = await setModerationStatus(report.id, 'removed');
     return NextResponse.json({ ok: true, report: updated });
   }
 

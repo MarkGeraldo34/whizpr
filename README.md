@@ -12,9 +12,11 @@ economy.
 - **Deposits:** Users send USDT to a treasury address; `viem` verifies the
   ERC-20 `Transfer` event and required confirmations server-side before
   crediting the ledger (`lib/viem-server.ts`).
-- **Ledger:** A server-side prepaid balance (`lib/ledger.ts`). Ships with an
-  in-memory implementation for local dev — **swap this for a real database
-  before going to production**, since serverless instances don't share memory.
+- **Ledger:** A server-side prepaid balance (`lib/ledger.ts`), backed by
+  Postgres (`lib/db.ts`) — same for reports, profiles, bans, and responders
+  (every `lib/*-store.ts` module). Tables are created automatically on first
+  use; point `DATABASE_URL` at a Neon database (Vercel Storage tab → Create
+  Database → Neon) and there's nothing else to run.
 - **OnchainOS Wallet API:** HMAC-signed requests (`lib/onchainos-client.ts`)
   following OKX's standard signing scheme. `getWalletBalance` tries both the
   `/wallet/balance` and `/wallet/balances` path shapes, since OnchainOS has
@@ -107,7 +109,7 @@ npm run dev
      `whizpr.vercel.app`, or your custom domain once attached)
    - `OKX_ONCHAINOS_API_BASE_URL`, `OKX_ONCHAINOS_API_KEY`,
      `OKX_ONCHAINOS_API_SECRET`, `OKX_ONCHAINOS_API_PASSPHRASE`
-   - `LEDGER_DATABASE_URL` (once you've wired up real storage)
+   - `DATABASE_URL` (Postgres — see "Ledger" above)
    - `BLOB_READ_WRITE_TOKEN` (if using Vercel Blob for media uploads)
    - `ADMIN_ADDRESSES` (wallets allowed to review reports and apply
      moderation penalties)
@@ -127,8 +129,6 @@ npm run dev
 
 ## Known gaps / next steps
 
-- Ledger, reports, profiles, bans, and moderation state are all in-memory
-  only — need a real database before production traffic.
 - Responders only get an email notification for now (see "Responder
   notification email" above) — there's no responder-side dashboard/"nearby
   alerts" view yet, and no self-serve way for a responder org to register

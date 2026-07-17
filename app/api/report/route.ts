@@ -5,7 +5,7 @@ import { storeEmergencyMedia } from '@/lib/media-storage';
 import { reverseGeocodeCountry } from '@/lib/geocode';
 import { recordReport, type StoredReport } from '@/lib/reports-store';
 import { ALERT_COST_WHIZCREDITS } from '@/lib/pricing';
-import { isBanned, getBan } from '@/lib/moderation-store';
+import { getBan } from '@/lib/moderation-store';
 import { MAX_VIDEO_SECONDS } from '@/lib/content-policy';
 import { getRespondersForCountry } from '@/lib/responders-store';
 import { notifyResponders } from '@/lib/email';
@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  if (isBanned(session.address)) {
-    const ban = getBan(session.address);
+  const ban = await getBan(session.address);
+  if (ban) {
     return NextResponse.json(
       {
         error:
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     createdAt: Date.now(),
     aiTriage,
   };
-  recordReport(report);
+  await recordReport(report);
 
   // Best-effort: notify first responders registered for this country by
   // email. The report is already paid for and stored — an email failure
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
   // means triage didn't run — video, no API key, provider error — so we
   // still notify, same as before triage existed).
   if (aiTriage === null || aiTriage.legitimate) {
-    const responderEmails = getRespondersForCountry(countryCode).map((r) => r.email);
+    const responderEmails = (await getRespondersForCountry(countryCode)).map((r) => r.email);
     notifyResponders(report, responderEmails).catch((err) => {
       console.error('notifyResponders failed', err);
     });

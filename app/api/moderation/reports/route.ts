@@ -16,5 +16,5 @@ export async function GET(req: NextRequest) {
     ? (statusParam as ModerationStatus)
     : undefined;
 
-  return NextResponse.json({ reports: getReportsForModeration(status) });
+  return NextResponse.json({ reports: await getReportsForModeration(status) });
 }

@@ -1,11 +1,12 @@
+import { sql } from './db';
+
 /**
  * Server-side registry of first-responder email contacts, keyed by the
  * country they cover. Used to fan out a notification email whenever a new
  * emergency report comes in for that country.
  *
- * Same in-memory tradeoff as the other lib/*-store.ts modules: fine for
- * local dev / a single serverless instance's lifetime, needs a real
- * database behind this same interface before production. Managed via
+ * Backed by Postgres (see lib/db.ts); the table is created on first use, so
+ * there's no separate migration step to run. Managed via
  * /api/admin/responders (admin-only, same ADMIN_ADDRESSES gate as
  * moderation).
  */
@@ -18,9 +19,36 @@ export interface ResponderContact {
   createdAt: number;
 }
 
-const responders: ResponderContact[] = [];
+let schemaReady: Promise<void> | null = null;
 
-export function addResponder(email: string, countryCode: string, countryName: string): ResponderContact {
+function ensureSchema(): Promise<void> {
+  if (!schemaReady) {
+    schemaReady = sql`
+      CREATE TABLE IF NOT EXISTS responders (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        country_code TEXT NOT NULL,
+        country_name TEXT NOT NULL,
+        created_at BIGINT NOT NULL
+      )
+    `.then(() => undefined);
+  }
+  return schemaReady;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToResponder(row: any): ResponderContact {
+  return {
+    id: row.id,
+    email: row.email,
+    countryCode: row.country_code,
+    countryName: row.country_name,
+    createdAt: Number(row.created_at),
+  };
+}
+
+export async function addResponder(email: string, countryCode: string, countryName: string): Promise<ResponderContact> {
+  await ensureSchema();
   const record: ResponderContact = {
     id: crypto.randomUUID(),
     email: email.trim().toLowerCase(),
@@ -28,23 +56,29 @@ export function addResponder(email: string, countryCode: string, countryName: st
     countryName: countryName.trim(),
     createdAt: Date.now(),
   };
-  responders.push(record);
+  await sql`
+    INSERT INTO responders (id, email, country_code, country_name, created_at)
+    VALUES (${record.id}, ${record.email}, ${record.countryCode}, ${record.countryName}, ${record.createdAt})
+  `;
   return record;
 }
 
-export function removeResponder(id: string): boolean {
-  const index = responders.findIndex((r) => r.id === id);
-  if (index === -1) return false;
-  responders.splice(index, 1);
-  return true;
+export async function removeResponder(id: string): Promise<boolean> {
+  await ensureSchema();
+  const rows = await sql`DELETE FROM responders WHERE id = ${id} RETURNING id`;
+  return rows.length > 0;
 }
 
-export function listResponders(): ResponderContact[] {
-  return [...responders].sort((a, b) => b.createdAt - a.createdAt);
+export async function listResponders(): Promise<ResponderContact[]> {
+  await ensureSchema();
+  const rows = await sql`SELECT * FROM responders ORDER BY created_at DESC`;
+  return rows.map(rowToResponder);
 }
 
-export function getRespondersForCountry(countryCode: string | null): ResponderContact[] {
+export async function getRespondersForCountry(countryCode: string | null): Promise<ResponderContact[]> {
   if (!countryCode) return [];
+  await ensureSchema();
   const normalized = countryCode.trim().toUpperCase();
-  return responders.filter((r) => r.countryCode === normalized);
+  const rows = await sql`SELECT * FROM responders WHERE country_code = ${normalized}`;
+  return rows.map(rowToResponder);
 }

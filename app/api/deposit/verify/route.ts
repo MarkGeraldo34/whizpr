@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'txHash is required' }, { status: 400 });
   }
 
-  if (hasProcessedDeposit(txHash)) {
+  if (await hasProcessedDeposit(txHash)) {
     return NextResponse.json({ error: 'Deposit already processed' }, { status: 409 });
   }
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   const creditedWhizcredits = usdtToWhizcredits(result.amount);
 
-  markDepositProcessed(txHash);
+  await markDepositProcessed(txHash);
   const newBalance = await creditDeposit(session.address, creditedWhizcredits);
 
   return NextResponse.json({

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
-  return NextResponse.json({ responders: listResponders() });
+  return NextResponse.json({ responders: await listResponders() });
 }
 
 /**
@@ -39,6 +39,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'countryName is required' }, { status: 400 });
   }
 
-  const responder = addResponder(email, countryCode, countryName);
+  const responder = await addResponder(email, countryCode, countryName);
   return NextResponse.json({ ok: true, responder });
 }

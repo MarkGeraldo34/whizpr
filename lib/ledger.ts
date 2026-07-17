@@ -1,30 +1,55 @@
+import { sql } from './db';
+
 /**
  * Server-side prepaid Whizcredits ledger.
  *
  * Balances are tracked in Whizcredits (Whizpr's internal usage unit), not
  * raw USDT — callers convert verified USDT deposits via lib/pricing.ts
- * before crediting. This module exposes a small interface (getBalance /
- * credit / debit) so the rest of the app never touches storage directly.
- * The in-memory Map below is only suitable for local dev / a single
- * serverless instance's lifetime — for production, wire LEDGER_DATABASE_URL
- * up to a real database (Vercel Postgres, Neon, etc.) behind this same
- * interface.
+ * before crediting. Backed by Postgres (see lib/db.ts); tables are created
+ * on first use, so there's no separate migration step to run.
  */
-
-interface LedgerEntry {
-  balance: bigint;
-  history: Array<{ type: 'credit' | 'debit'; amount: bigint; reason: string; at: number }>;
-}
-
-const inMemoryLedger = new Map<string, LedgerEntry>();
 
 function keyFor(address: string) {
   return address.toLowerCase();
 }
 
+let schemaReady: Promise<void> | null = null;
+
+async function createSchema(): Promise<void> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS ledger_balances (
+      address TEXT PRIMARY KEY,
+      balance NUMERIC NOT NULL DEFAULT 0
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS ledger_history (
+      id BIGSERIAL PRIMARY KEY,
+      address TEXT NOT NULL,
+      type TEXT NOT NULL,
+      amount NUMERIC NOT NULL,
+      reason TEXT NOT NULL,
+      at BIGINT NOT NULL
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS processed_deposits (
+      tx_hash TEXT PRIMARY KEY
+    )
+  `;
+}
+
+function ensureSchema(): Promise<void> {
+  if (!schemaReady) {
+    schemaReady = createSchema();
+  }
+  return schemaReady;
+}
+
 export async function getBalance(address: `0x${string}`): Promise<bigint> {
-  const entry = inMemoryLedger.get(keyFor(address));
-  return entry?.balance ?? 0n;
+  await ensureSchema();
+  const rows = await sql`SELECT balance FROM ledger_balances WHERE address = ${keyFor(address)}`;
+  return rows[0] ? BigInt(rows[0].balance) : 0n;
 }
 
 export async function creditDeposit(
@@ -32,12 +57,18 @@ export async function creditDeposit(
   amount: bigint,
   reason = 'on-chain USDT deposit converted to Whizcredits',
 ): Promise<bigint> {
+  await ensureSchema();
   const key = keyFor(address);
-  const entry = inMemoryLedger.get(key) ?? { balance: 0n, history: [] };
-  entry.balance += amount;
-  entry.history.push({ type: 'credit', amount, reason, at: Date.now() });
-  inMemoryLedger.set(key, entry);
-  return entry.balance;
+  const rows = await sql`
+    INSERT INTO ledger_balances (address, balance) VALUES (${key}, ${amount.toString()})
+    ON CONFLICT (address) DO UPDATE SET balance = ledger_balances.balance + EXCLUDED.balance
+    RETURNING balance
+  `;
+  await sql`
+    INSERT INTO ledger_history (address, type, amount, reason, at)
+    VALUES (${key}, 'credit', ${amount.toString()}, ${reason}, ${Date.now()})
+  `;
+  return BigInt(rows[0].balance);
 }
 
 export async function debitForUsage(
@@ -45,17 +76,29 @@ export async function debitForUsage(
   amount: bigint,
   reason: string,
 ): Promise<{ ok: boolean; balance: bigint }> {
+  await ensureSchema();
   const key = keyFor(address);
-  const entry = inMemoryLedger.get(key) ?? { balance: 0n, history: [] };
 
-  if (entry.balance < amount) {
-    return { ok: false, balance: entry.balance };
+  // Single atomic UPDATE ... WHERE balance >= amount — the DB's row lock
+  // makes the check-and-decrement safe against concurrent requests, unlike
+  // the old in-memory Map's separate read-then-write.
+  const rows = await sql`
+    UPDATE ledger_balances
+    SET balance = balance - ${amount.toString()}
+    WHERE address = ${key} AND balance >= ${amount.toString()}
+    RETURNING balance
+  `;
+
+  if (rows.length === 0) {
+    const existing = await sql`SELECT balance FROM ledger_balances WHERE address = ${key}`;
+    return { ok: false, balance: existing[0] ? BigInt(existing[0].balance) : 0n };
   }
 
-  entry.balance -= amount;
-  entry.history.push({ type: 'debit', amount, reason, at: Date.now() });
-  inMemoryLedger.set(key, entry);
-  return { ok: true, balance: entry.balance };
+  await sql`
+    INSERT INTO ledger_history (address, type, amount, reason, at)
+    VALUES (${key}, 'debit', ${amount.toString()}, ${reason}, ${Date.now()})
+  `;
+  return { ok: true, balance: BigInt(rows[0].balance) };
 }
 
 /**
@@ -70,23 +113,36 @@ export async function penalizeCredits(
   amount: bigint,
   reason: string,
 ): Promise<bigint> {
+  await ensureSchema();
   const key = keyFor(address);
-  const entry = inMemoryLedger.get(key) ?? { balance: 0n, history: [] };
-  const deducted = entry.balance < amount ? entry.balance : amount;
 
-  entry.balance -= deducted;
-  entry.history.push({ type: 'debit', amount: deducted, reason, at: Date.now() });
-  inMemoryLedger.set(key, entry);
-  return entry.balance;
+  await sql`INSERT INTO ledger_balances (address, balance) VALUES (${key}, 0) ON CONFLICT (address) DO NOTHING`;
+  const before = await sql`SELECT balance FROM ledger_balances WHERE address = ${key}`;
+  const priorBalance = BigInt(before[0]?.balance ?? 0);
+  const deducted = priorBalance < amount ? priorBalance : amount;
+
+  const rows = await sql`
+    UPDATE ledger_balances SET balance = balance - ${deducted.toString()}
+    WHERE address = ${key}
+    RETURNING balance
+  `;
+  await sql`
+    INSERT INTO ledger_history (address, type, amount, reason, at)
+    VALUES (${key}, 'debit', ${deducted.toString()}, ${reason}, ${Date.now()})
+  `;
+  return BigInt(rows[0].balance);
 }
 
 // Prevent double-crediting the same on-chain deposit transaction twice.
-const processedDeposits = new Set<string>();
-
-export function hasProcessedDeposit(txHash: string): boolean {
-  return processedDeposits.has(txHash.toLowerCase());
+export async function hasProcessedDeposit(txHash: string): Promise<boolean> {
+  await ensureSchema();
+  const rows = await sql`SELECT 1 FROM processed_deposits WHERE tx_hash = ${txHash.toLowerCase()}`;
+  return rows.length > 0;
 }
 
-export function markDepositProcessed(txHash: string): void {
-  processedDeposits.add(txHash.toLowerCase());
+export async function markDepositProcessed(txHash: string): Promise<void> {
+  await ensureSchema();
+  await sql`
+    INSERT INTO processed_deposits (tx_hash) VALUES (${txHash.toLowerCase()}) ON CONFLICT (tx_hash) DO NOTHING
+  `;
 }

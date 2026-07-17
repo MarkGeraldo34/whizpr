@@ -12,9 +12,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const profile = getProfile(session.address);
+  const profile = await getProfile(session.address);
   const balance = await getBalance(session.address);
-  const ban = getBan(session.address);
+  const ban = await getBan(session.address);
 
   return NextResponse.json({
     address: session.address,
@@ -40,13 +40,13 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (isUsernameTaken(trimmed, session.address)) {
+  if (await isUsernameTaken(trimmed, session.address)) {
     return NextResponse.json({ error: 'That username is already taken.' }, { status: 409 });
   }
 
-  const profile = setUsername(session.address, trimmed);
+  const profile = await setUsername(session.address, trimmed);
   const balance = await getBalance(session.address);
-  const ban = getBan(session.address);
+  const ban = await getBan(session.address);
 
   return NextResponse.json({
     address: profile.address,

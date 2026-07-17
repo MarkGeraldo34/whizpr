@@ -9,7 +9,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
-  const removed = removeResponder(params.id);
+  const removed = await removeResponder(params.id);
   if (!removed) {
     return NextResponse.json({ error: 'Responder not found' }, { status: 404 });
   }
