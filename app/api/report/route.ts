@@ -41,6 +41,26 @@ const ALLOWED_MEDIA_TYPES = new Set([
   'video/webm',
 ]);
 
+// Deployed on Vercel, not behind an nginx/Cloudflare reverse proxy — `force-
+// dynamic` plus an explicit `Cache-Control: no-store` on every response
+// (below) is the platform-native equivalent of "bypass cache for requests
+// carrying PAYMENT-SIGNATURE": it stops Vercel's CDN from ever storing a
+// response for this route, paid or unpaid, rather than trying to key the
+// bypass off one specific header.
+export const dynamic = 'force-dynamic';
+
+// Every response from this endpoint — challenge, error, or success — must
+// never be cached: caching a paid response would let a later, unpaid
+// requester replay it for free, and caching a 402 challenge risks serving a
+// stale/expired one. Wraps NextResponse.json to apply this uniformly instead
+// of repeating the header at every call site.
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  return NextResponse.json(body, {
+    ...init,
+    headers: { ...init?.headers, 'Cache-Control': 'no-store' },
+  });
+}
+
 function payment402(req: NextRequest) {
   const { headerValue } = buildReportPaymentChallenge(req.url);
   return new NextResponse(JSON.stringify({ error: 'Payment required' }), {
@@ -82,7 +102,7 @@ export async function POST(req: NextRequest) {
 
   const ban = await getBan(payerAddress);
   if (ban) {
-    return NextResponse.json(
+    return jsonNoStore(
       {
         error:
           'Your account has been banned for violating Whizpr’s content policy (submitting unrelated or ' +
@@ -97,20 +117,14 @@ export async function POST(req: NextRequest) {
     // Not banned — safe to actually settle the on-chain payment now.
     const nonce = decodedPayment.payload.authorization.nonce;
     if (await hasProcessedX402Payment(nonce)) {
-      return NextResponse.json(
-        { error: 'Payment already used' },
-        { status: 409, headers: { 'Cache-Control': 'no-store' } },
-      );
+      return jsonNoStore({ error: 'Payment already used' }, { status: 409 });
     }
 
     x402Settlement = await settleX402Payment(decodedPayment, expectedAccept);
     if (!x402Settlement.success) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: x402Settlement.errorMessage ?? 'Payment could not be settled' },
-        {
-          status: 402,
-          headers: { 'Cache-Control': 'no-store', 'PAYMENT-RESPONSE': encodePaymentResponse(x402Settlement) },
-        },
+        { status: 402, headers: { 'PAYMENT-RESPONSE': encodePaymentResponse(x402Settlement) } },
       );
     }
     await markX402PaymentProcessed(nonce);
@@ -131,10 +145,10 @@ export async function POST(req: NextRequest) {
   const clientVideoDurationRaw = formData.get('videoDurationSeconds');
 
   if (!media || !(media instanceof File)) {
-    return NextResponse.json({ error: 'Emergency media file is required' }, { status: 400 });
+    return jsonNoStore({ error: 'Emergency media file is required' }, { status: 400 });
   }
   if (!ALLOWED_MEDIA_TYPES.has(media.type)) {
-    return NextResponse.json(
+    return jsonNoStore(
       { error: 'Only photo or video files of a genuine hazard/emergency are accepted.' },
       { status: 400 },
     );
@@ -142,25 +156,22 @@ export async function POST(req: NextRequest) {
   if (media.type.startsWith('video/') && clientVideoDurationRaw) {
     const clientVideoDuration = Number(clientVideoDurationRaw);
     if (Number.isFinite(clientVideoDuration) && clientVideoDuration > MAX_VIDEO_SECONDS) {
-      return NextResponse.json(
-        { error: `Videos must be ${MAX_VIDEO_SECONDS} seconds or shorter.` },
-        { status: 400 },
-      );
+      return jsonNoStore({ error: `Videos must be ${MAX_VIDEO_SECONDS} seconds or shorter.` }, { status: 400 });
     }
   }
   if (!lat || !lng) {
-    return NextResponse.json({ error: 'Location (lat/lng) is required' }, { status: 400 });
+    return jsonNoStore({ error: 'Location (lat/lng) is required' }, { status: 400 });
   }
   const casualties = casualtiesRaw === null ? 0 : Number(casualtiesRaw);
   if (!Number.isInteger(casualties) || casualties < 0) {
-    return NextResponse.json({ error: 'Number of people affected must be a non-negative integer' }, { status: 400 });
+    return jsonNoStore({ error: 'Number of people affected must be a non-negative integer' }, { status: 400 });
   }
 
   // Debit before storing: an alert the user can't pay for shouldn't consume
   // Blob storage or reach responders in the first place.
   const debit = await debitForUsage(payerAddress, ALERT_COST_WHIZCREDITS, 'emergency alert submission');
   if (!debit.ok) {
-    return NextResponse.json(
+    return jsonNoStore(
       { error: 'Insufficient Whizcredits. Deposit USDT to top up before submitting an alert.' },
       { status: 402 },
     );
@@ -202,7 +213,7 @@ export async function POST(req: NextRequest) {
     await creditDeposit(payerAddress, ALERT_COST_WHIZCREDITS, 'refund: report submission failed').catch(() => {
       // Best-effort refund; if this also fails it needs manual reconciliation.
     });
-    return NextResponse.json(
+    return jsonNoStore(
       { error: err instanceof Error ? err.message : 'Failed to record emergency report' },
       { status: 502 },
     );
@@ -224,7 +235,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json(
+  return jsonNoStore(
     {
       ok: true,
       remainingWhizcredits: debit.balance.toString(),
@@ -241,8 +252,6 @@ export async function POST(req: NextRequest) {
         },
       },
     },
-    x402Settlement
-      ? { headers: { 'Cache-Control': 'no-store', 'PAYMENT-RESPONSE': encodePaymentResponse(x402Settlement) } }
-      : undefined,
+    x402Settlement ? { headers: { 'PAYMENT-RESPONSE': encodePaymentResponse(x402Settlement) } } : undefined,
   );
 }
