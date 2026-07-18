@@ -35,10 +35,16 @@ economy.
   request/response shape, `{code, msg, data}` envelope, endpoint path
   (`/api/v6/pay/x402/settle`), and HMAC signing are verified against OKX's
   own Go SDK source (github.com/okx/payments —
-  `go/x402/http/okx_facilitator_client.go` / `okx_auth.go`) — still worth a
-  live smoke test with real credentials before trusting this with real
-  money, since it was verified by reading the SDK rather than by exercising
-  the API.
+  `go/x402/http/okx_facilitator_client.go` / `okx_auth.go`). **Live-verified
+  end-to-end against the deployed production endpoint**: an unpaid `POST
+  /api/report` returned a valid `402` + `PAYMENT-REQUIRED` challenge, a real
+  signed payment was accepted and settled through OKX's facilitator (0.1
+  USDT actually left the paying wallet on X Layer), and the server correctly
+  recognized the settlement as successful and proceeded into normal request
+  handling (confirmed via the media-validation error, reached only after
+  payment + ban checks pass) — without publishing a report or notifying
+  responders, since that test intentionally omitted the media file. The
+  known gap below (no `/settle/status` polling) still stands.
 - **Live feed:** Reports are auto-published — no admin approval gate before
   they're visible. `GET /api/feed` (public, no auth) returns recent reports,
   including the reported photo/video, with reporter identity always stripped
