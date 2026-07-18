@@ -1,5 +1,5 @@
 import { createHmac } from 'crypto';
-import { ALERT_COST_WHIZCREDITS, whizcreditsToUsdtAtomic } from './pricing';
+import { ALERT_COST_WHIZCREDITS, PRECISE_LOCATION_COST_WHIZCREDITS, whizcreditsToUsdtAtomic } from './pricing';
 
 /**
  * OKX Agent Payments Protocol (x402 v2, "exact" scheme) support for a paid
@@ -39,12 +39,12 @@ export interface X402Accept {
   extra: { name: string; version: string };
 }
 
-function getExpectedAccept(): X402Accept {
+function getExpectedAccept(whizcreditsCost: bigint): X402Accept {
   const chainId = process.env.NEXT_PUBLIC_CHAIN_ID ?? '196';
   return {
     scheme: SCHEME,
     network: `eip155:${chainId}`,
-    amount: whizcreditsToUsdtAtomic(ALERT_COST_WHIZCREDITS).toString(),
+    amount: whizcreditsToUsdtAtomic(whizcreditsCost).toString(),
     asset: getEnv('NEXT_PUBLIC_USDT_TOKEN_ADDRESS'),
     payTo: getEnv('NEXT_PUBLIC_DEPOSIT_ADDRESS'),
     maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
@@ -52,21 +52,31 @@ function getExpectedAccept(): X402Accept {
   };
 }
 
-/** Builds the base64 PAYMENT-REQUIRED challenge for the alert-submission endpoint. */
-export function buildReportPaymentChallenge(resourceUrl: string) {
-  const accept = getExpectedAccept();
+/** Builds a base64 PAYMENT-REQUIRED challenge for a given resource, description, and Whizcredits price. */
+export function buildPaymentChallenge(resourceUrl: string, description: string, whizcreditsCost: bigint) {
+  const accept = getExpectedAccept(whizcreditsCost);
   const challenge = {
     x402Version: X402_VERSION,
     error: 'Payment required',
-    resource: {
-      url: resourceUrl,
-      description: 'Whizpr emergency alert submission',
-      mimeType: 'application/json',
-    },
+    resource: { url: resourceUrl, description, mimeType: 'application/json' },
     accepts: [accept],
   };
   const headerValue = Buffer.from(JSON.stringify(challenge)).toString('base64');
   return { headerValue, accept };
+}
+
+/** Builds the base64 PAYMENT-REQUIRED challenge for the alert-submission endpoint. */
+export function buildReportPaymentChallenge(resourceUrl: string) {
+  return buildPaymentChallenge(resourceUrl, 'Whizpr emergency alert submission', ALERT_COST_WHIZCREDITS);
+}
+
+/** Builds the base64 PAYMENT-REQUIRED challenge for the precise-location lookup endpoint. */
+export function buildPreciseLocationPaymentChallenge(resourceUrl: string) {
+  return buildPaymentChallenge(
+    resourceUrl,
+    'Whizpr precise incident location + AI triage lookup',
+    PRECISE_LOCATION_COST_WHIZCREDITS,
+  );
 }
 
 export interface DecodedPaymentSignature {

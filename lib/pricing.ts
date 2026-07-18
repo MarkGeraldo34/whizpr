@@ -21,6 +21,11 @@ export const WHIZCREDITS_PER_USDT = 50n;
 // Cost of a single emergency alert submission, in Whizcredits.
 export const ALERT_COST_WHIZCREDITS = 5n;
 
+// Cost of a single precise-location + AI-triage lookup on an existing report
+// (GET /api/report/[id]/precise) — a paid, read-only alternative to the free
+// public feed's country-level location and stripped triage detail.
+export const PRECISE_LOCATION_COST_WHIZCREDITS = 1n;
+
 export function usdtToWhizcredits(rawUsdtAmount: bigint): bigint {
   return (rawUsdtAmount * WHIZCREDITS_PER_USDT) / USDT_UNIT;
 }

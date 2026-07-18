@@ -45,6 +45,24 @@ economy.
   payment + ban checks pass) — without publishing a report or notifying
   responders, since that test intentionally omitted the media file. The
   known gap below (no `/settle/status` polling) still stands.
+- **Precise-location lookup (`GET /api/report/[id]/precise`):** a paid,
+  read-only x402 GET resource — the free public feed deliberately shows only
+  country-level location and no AI-triage detail; this endpoint sells the
+  exact coordinates + full triage (severity/reasoning) for one existing
+  report, priced at `PRECISE_LOCATION_COST_WHIZCREDITS` (far below an alert
+  submission — it's a lookup, not a write). Same dual auth as `POST
+  /api/report` (session ledger debit, or a one-shot x402 payment with no
+  sign-up), reusing `lib/x402.ts`'s facilitator/settlement code via the new
+  `buildPaymentChallenge` generic (with `buildReportPaymentChallenge` now a
+  thin wrapper around it). Existence is checked *before* settling any x402
+  payment — unlike the alert-submission endpoint, a bad `id` here is outside
+  the caller's control, so it shouldn't cost them anything. Never exposes
+  `reporterAddress` — the reporter-anonymity guarantee below still holds.
+  This exists specifically because the x402 readiness scanner used during
+  development only tests with `GET`, and `POST /api/report` (an alert
+  submission with a media upload) can't honestly be made GET-shaped — this
+  endpoint is a genuine, separately-priced product surface, not a workaround
+  bolted onto the same route.
 - **Live feed:** Reports are auto-published — no admin approval gate before
   they're visible. `GET /api/feed` (public, no auth) returns recent reports,
   including the reported photo/video, with reporter identity always stripped
