@@ -24,3 +24,9 @@ export const ALERT_COST_WHIZCREDITS = 5n;
 export function usdtToWhizcredits(rawUsdtAmount: bigint): bigint {
   return (rawUsdtAmount * WHIZCREDITS_PER_USDT) / USDT_UNIT;
 }
+
+// Inverse of usdtToWhizcredits — used by lib/x402.ts to quote the per-call
+// USDT price of an alert submission for one-shot (no-deposit) x402 payment.
+export function whizcreditsToUsdtAtomic(whizcredits: bigint): bigint {
+  return (whizcredits * USDT_UNIT) / WHIZCREDITS_PER_USDT;
+}

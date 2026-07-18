@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionCookieValue, sessionCookieName } from '@/lib/siwe-session';
-import { debitForUsage, creditDeposit } from '@/lib/ledger';
+import {
+  debitForUsage,
+  creditDeposit,
+  hasProcessedX402Payment,
+  markX402PaymentProcessed,
+} from '@/lib/ledger';
 import { storeEmergencyMedia } from '@/lib/media-storage';
 import { reverseGeocodeCountry } from '@/lib/geocode';
 import { recordReport, type StoredReport } from '@/lib/reports-store';
@@ -10,6 +15,16 @@ import { MAX_VIDEO_SECONDS } from '@/lib/content-policy';
 import { getRespondersForCountry } from '@/lib/responders-store';
 import { notifyResponders } from '@/lib/email';
 import { triageReport } from '@/lib/triage';
+import {
+  buildReportPaymentChallenge,
+  decodePaymentSignature,
+  validatePayment,
+  settleX402Payment,
+  encodePaymentResponse,
+  type DecodedPaymentSignature,
+  type X402Accept,
+  type SettleResult,
+} from '@/lib/x402';
 
 // Whizpr is for genuine hazard/emergency evidence only — reject arbitrary
 // file types outright. This is a basic technical guardrail; the actual
@@ -26,13 +41,46 @@ const ALLOWED_MEDIA_TYPES = new Set([
   'video/webm',
 ]);
 
+function payment402(req: NextRequest) {
+  const { headerValue } = buildReportPaymentChallenge(req.url);
+  return new NextResponse(JSON.stringify({ error: 'Payment required' }), {
+    status: 402,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      'PAYMENT-REQUIRED': headerValue,
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   const session = verifySessionCookieValue(req.cookies.get(sessionCookieName)?.value);
-  if (!session) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+  // Two ways to be authorized to submit an alert: a logged-in session
+  // spending from the prepaid Whizcredits ledger (below), or — with no
+  // session at all — a one-shot payment via the OKX Agent Payments Protocol
+  // (x402), letting an AI agent pay per-alert directly with no sign-up.
+  let payerAddress: `0x${string}`;
+  let decodedPayment: DecodedPaymentSignature | null = null;
+  let expectedAccept: X402Accept | null = null;
+
+  if (session) {
+    payerAddress = session.address;
+  } else {
+    const paymentHeader = req.headers.get('PAYMENT-SIGNATURE');
+    if (!paymentHeader) return payment402(req);
+
+    decodedPayment = decodePaymentSignature(paymentHeader);
+    expectedAccept = buildReportPaymentChallenge(req.url).accept;
+    if (!decodedPayment) return payment402(req);
+
+    const validation = validatePayment(decodedPayment, expectedAccept);
+    if (!validation.ok) return payment402(req);
+
+    payerAddress = decodedPayment.payload.authorization.from as `0x${string}`;
   }
 
-  const ban = await getBan(session.address);
+  const ban = await getBan(payerAddress);
   if (ban) {
     return NextResponse.json(
       {
@@ -42,6 +90,36 @@ export async function POST(req: NextRequest) {
       },
       { status: 403 },
     );
+  }
+
+  let x402Settlement: SettleResult | null = null;
+  if (decodedPayment && expectedAccept) {
+    // Not banned — safe to actually settle the on-chain payment now.
+    const nonce = decodedPayment.payload.authorization.nonce;
+    if (await hasProcessedX402Payment(nonce)) {
+      return NextResponse.json(
+        { error: 'Payment already used' },
+        { status: 409, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
+    x402Settlement = await settleX402Payment(decodedPayment, expectedAccept);
+    if (!x402Settlement.success) {
+      return NextResponse.json(
+        { error: x402Settlement.errorMessage ?? 'Payment could not be settled' },
+        {
+          status: 402,
+          headers: { 'Cache-Control': 'no-store', 'PAYMENT-RESPONSE': encodePaymentResponse(x402Settlement) },
+        },
+      );
+    }
+    await markX402PaymentProcessed(nonce);
+
+    // Converts the settled on-chain payment into the same prepaid-ledger
+    // credit a deposit would produce, then immediately spends it below — so
+    // the ban check above and every debit/refund/response path below is
+    // shared between session users and one-shot x402 payers unchanged.
+    await creditDeposit(payerAddress, ALERT_COST_WHIZCREDITS, 'x402 payment settled via OKX facilitator');
   }
 
   const formData = await req.formData();
@@ -80,7 +158,7 @@ export async function POST(req: NextRequest) {
 
   // Debit before storing: an alert the user can't pay for shouldn't consume
   // Blob storage or reach responders in the first place.
-  const debit = await debitForUsage(session.address, ALERT_COST_WHIZCREDITS, 'emergency alert submission');
+  const debit = await debitForUsage(payerAddress, ALERT_COST_WHIZCREDITS, 'emergency alert submission');
   if (!debit.ok) {
     return NextResponse.json(
       { error: 'Insufficient Whizcredits. Deposit USDT to top up before submitting an alert.' },
@@ -105,7 +183,7 @@ export async function POST(req: NextRequest) {
 
     report = {
       id: crypto.randomUUID(),
-      reporterAddress: session.address,
+      reporterAddress: payerAddress,
       lat: latNum,
       lng: lngNum,
       countryCode,
@@ -121,7 +199,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     // The user has already been debited for a submission that can't be
     // completed — refund immediately rather than silently eating the cost.
-    await creditDeposit(session.address, ALERT_COST_WHIZCREDITS, 'refund: report submission failed').catch(() => {
+    await creditDeposit(payerAddress, ALERT_COST_WHIZCREDITS, 'refund: report submission failed').catch(() => {
       // Best-effort refund; if this also fails it needs manual reconciliation.
     });
     return NextResponse.json(
@@ -146,20 +224,25 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    ok: true,
-    remainingWhizcredits: debit.balance.toString(),
-    alert: {
-      lat: String(lat),
-      lng: String(lng),
-      country: countryName,
-      casualties,
-      description: description ? String(description) : null,
-      media: {
-        pathname: stored.pathname,
-        contentType: stored.contentType,
-        size: stored.size,
+  return NextResponse.json(
+    {
+      ok: true,
+      remainingWhizcredits: debit.balance.toString(),
+      alert: {
+        lat: String(lat),
+        lng: String(lng),
+        country: countryName,
+        casualties,
+        description: description ? String(description) : null,
+        media: {
+          pathname: stored.pathname,
+          contentType: stored.contentType,
+          size: stored.size,
+        },
       },
     },
-  });
+    x402Settlement
+      ? { headers: { 'Cache-Control': 'no-store', 'PAYMENT-RESPONSE': encodePaymentResponse(x402Settlement) } }
+      : undefined,
+  );
 }

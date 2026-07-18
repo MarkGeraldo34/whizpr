@@ -37,6 +37,11 @@ async function createSchema(): Promise<void> {
       tx_hash TEXT PRIMARY KEY
     )
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS processed_x402_payments (
+      nonce TEXT PRIMARY KEY
+    )
+  `;
 }
 
 function ensureSchema(): Promise<void> {
@@ -144,5 +149,20 @@ export async function markDepositProcessed(txHash: string): Promise<void> {
   await ensureSchema();
   await sql`
     INSERT INTO processed_deposits (tx_hash) VALUES (${txHash.toLowerCase()}) ON CONFLICT (tx_hash) DO NOTHING
+  `;
+}
+
+// Prevent a single x402 EIP-3009 authorization (identified by its nonce) from
+// being settled and spent twice — e.g. a client retrying a slow request.
+export async function hasProcessedX402Payment(nonce: string): Promise<boolean> {
+  await ensureSchema();
+  const rows = await sql`SELECT 1 FROM processed_x402_payments WHERE nonce = ${nonce.toLowerCase()}`;
+  return rows.length > 0;
+}
+
+export async function markX402PaymentProcessed(nonce: string): Promise<void> {
+  await ensureSchema();
+  await sql`
+    INSERT INTO processed_x402_payments (nonce) VALUES (${nonce.toLowerCase()}) ON CONFLICT (nonce) DO NOTHING
   `;
 }

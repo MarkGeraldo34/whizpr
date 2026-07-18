@@ -21,6 +21,21 @@ economy.
   following OKX's standard signing scheme. `getWalletBalance` tries both the
   `/wallet/balance` and `/wallet/balances` path shapes, since OnchainOS has
   used both.
+- **x402 one-shot payments (`lib/x402.ts`):** `POST /api/report` also accepts
+  a single OKX Agent Payments Protocol (x402 v2, `exact` scheme) payment as
+  an alternative to session + prepaid ledger — no SIWE login or deposit
+  needed. A request with no session and no `PAYMENT-SIGNATURE` header gets a
+  proper `PAYMENT-REQUIRED` challenge (402) quoting the alert's USDT price
+  (converted from `ALERT_COST_WHIZCREDITS` via `whizcreditsToUsdtAtomic`); a
+  valid signed authorization is settled through OKX's x402 facilitator, then
+  converted into the same Whizcredits credit a deposit would produce and
+  immediately spent — so ban checks, refund-on-failure, and the response
+  shape are shared with the session path unchanged. EIP-3009 nonces are
+  tracked (`processed_x402_payments`) to reject replay. The facilitator
+  settle endpoint path is per OKX's docs
+  (web3.okx.com/onchainos/dev-docs/payments/api-http-batch) — confirm the
+  exact request/response schema there before relying on this in production;
+  it wasn't reachable to verify while building this.
 - **Live feed:** Reports are auto-published — no admin approval gate before
   they're visible. `GET /api/feed` (public, no auth) returns recent reports,
   including the reported photo/video, with reporter identity always stripped
