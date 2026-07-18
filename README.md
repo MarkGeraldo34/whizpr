@@ -22,10 +22,18 @@ economy.
   `/wallet/balance` and `/wallet/balances` path shapes, since OnchainOS has
   used both.
 - **Live feed:** Reports are auto-published — no admin approval gate before
-  they're visible. `GET /api/feed` (public, no auth) returns recent reports
-  with reporter identity and media stripped out (`lib/reports-store.ts`'s
-  `getPublicFeed`), rendered by `components/LiveFeed.tsx`. The country
-  leaderboard counts everything on the feed the same way.
+  they're visible. `GET /api/feed` (public, no auth) returns recent reports,
+  including the reported photo/video, with reporter identity always stripped
+  out (`lib/reports-store.ts`'s `getPublicFeed`), rendered by
+  `components/LiveFeed.tsx`. The country leaderboard counts everything on
+  the feed the same way. Media is uploaded to Vercel Blob with
+  `access: 'public'` (`lib/media-storage.ts`) so the URLs are directly
+  browser-loadable — the storage path itself is a random UUID, not the
+  reporter's wallet address, so the media URL can't be used to de-anonymize
+  them either. This is a deliberate product choice to make reports publicly
+  visible with evidence attached; be aware media can depict real people
+  (bystanders, victims) in public emergency situations before choosing this
+  tradeoff for your own deployment.
 - **Content moderation:** Whizpr is for genuine hazard/emergency footage
   only. Uploads are restricted to image/video MIME types and videos over 30
   seconds are rejected client-side. Admins — wallet addresses listed in
@@ -136,10 +144,8 @@ npm run dev
 - WalletConnect is optional; set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` to
   enable it alongside the injected-wallet connector.
 - No admin UI for the moderation queue yet — `/api/moderation/reports` and
-  `/api/moderation/reports/[id]/action` are API-only. Private Blob media
-  (uploaded with `access: 'private'`) also has no authenticated viewer route
-  yet, so reviewing the actual footage currently requires fetching it
-  server-side with the Blob token.
+  `/api/moderation/reports/[id]/action` are API-only, though the media itself
+  is easy to review since it's a plain public URL (see "Live feed" above).
 - The 30-second video cap is enforced client-side (and the server checks the
   client-reported duration when present); there's no server-side media
   parsing, so a deliberately crafted request could bypass it — moderation

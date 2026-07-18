@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
   let stored;
   let report: StoredReport;
   try {
-    stored = await storeEmergencyMedia(media, session.address);
+    stored = await storeEmergencyMedia(media);
 
     const latNum = Number(lat);
     const lngNum = Number(lng);

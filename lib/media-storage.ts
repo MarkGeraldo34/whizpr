@@ -18,10 +18,7 @@ export interface StoredMedia {
  * missing or the upload otherwise fails, so the route handler can surface a
  * clean 5xx instead of silently dropping the file.
  */
-export async function storeEmergencyMedia(
-  file: File,
-  reporterAddress: string,
-): Promise<StoredMedia> {
+export async function storeEmergencyMedia(file: File): Promise<StoredMedia> {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     throw new Error('BLOB_READ_WRITE_TOKEN is not configured — cannot store emergency media');
   }
@@ -34,18 +31,16 @@ export async function storeEmergencyMedia(
     );
   }
 
-  // Namespace by reporter + timestamp so files never collide and it's easy
-  // to trace an upload back to who sent it and roughly when.
-  const safeAddress = reporterAddress.toLowerCase();
+  // Media is public (shown on the feed to any visitor), so the path must not
+  // embed the reporter's wallet address — that would de-anonymize them via
+  // the media URL even though the feed API itself never returns their
+  // address. A random id plus addRandomSuffix below is enough to avoid
+  // collisions without linking the file back to who uploaded it.
   const extension = file.name.includes('.') ? file.name.split('.').pop() : undefined;
-  const pathname = `alerts/${safeAddress}/${Date.now()}${extension ? `.${extension}` : ''}`;
+  const pathname = `alerts/${crypto.randomUUID()}${extension ? `.${extension}` : ''}`;
 
-  // Emergency media can capture victims, bystanders, or crime scenes who
-  // never consented to being filmed — store it privately rather than at a
-  // guessable public URL. Responders will need an authenticated route
-  // (using @vercel/blob's `get()` with access: 'private') to view it.
   const blob = await put(pathname, file, {
-    access: 'private',
+    access: 'public',
     contentType: file.type || undefined,
     addRandomSuffix: true,
   });

@@ -8,6 +8,7 @@ interface FeedEntry {
   countryName: string | null;
   casualties: number;
   createdAt: number;
+  media: { url: string; contentType: string };
 }
 
 function timeAgo(timestamp: number): string {
@@ -63,8 +64,8 @@ export function LiveFeed() {
         Live feed
       </div>
       <p className="muted" style={{ marginBottom: 8 }}>
-        Reports are posted here as soon as they're submitted — media and reporter identity stay
-        private; only what responders need for awareness is shown.
+        Reports are posted here as soon as they're submitted, including the reported photo/video —
+        reporter identity always stays private.
       </p>
 
       {error && <p className="status-text error">{error}</p>}
@@ -91,6 +92,22 @@ export function LiveFeed() {
                   {timeAgo(report.createdAt)}
                 </span>
               </div>
+              {report.media.contentType.startsWith('video/') ? (
+                <video
+                  src={report.media.url}
+                  controls
+                  style={{ width: '100%', maxHeight: 320, borderRadius: 8, marginBottom: 6 }}
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- remote user-uploaded
+                // media with an unpredictable Blob storage hostname; next/image would need
+                // that hostname allowlisted in next.config.js ahead of time.
+                <img
+                  src={report.media.url}
+                  alt={report.description ?? 'Reported emergency media'}
+                  style={{ width: '100%', maxHeight: 320, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }}
+                />
+              )}
               {report.description && (
                 <p style={{ margin: '0 0 4px', fontSize: 13.5, color: 'var(--text)' }}>{report.description}</p>
               )}

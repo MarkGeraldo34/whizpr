@@ -128,22 +128,28 @@ export async function getReportsForModeration(status?: ModerationStatus): Promis
   return rows.map(rowToReport);
 }
 
+export interface PublicFeedMedia {
+  url: string;
+  contentType: string;
+}
+
 export interface PublicFeedEntry {
   id: string;
   description: string | null;
   countryName: string | null;
   casualties: number;
   createdAt: number;
+  media: PublicFeedMedia;
 }
 
-// Public-safe view of the feed: no reporter address, no media (media stays
-// private — it can capture victims, bystanders, or crime scenes who never
-// consented to being filmed publicly). Auto-published, so this includes
-// everything except reports an admin has removed.
+// Public-safe view of the feed: no reporter address (media is public, but
+// storeEmergencyMedia deliberately keeps the reporter's address out of the
+// media path, so the media URL doesn't de-anonymize them either). Auto-
+// published, so this includes everything except reports an admin has removed.
 export async function getPublicFeed(limit = 50): Promise<PublicFeedEntry[]> {
   await ensureSchema();
   const rows = await sql`
-    SELECT id, description, country_name, casualties, created_at
+    SELECT id, description, country_name, casualties, created_at, media_url, media_content_type
     FROM reports
     WHERE moderation_status != 'removed'
     ORDER BY created_at DESC
@@ -155,6 +161,7 @@ export async function getPublicFeed(limit = 50): Promise<PublicFeedEntry[]> {
     countryName: row.country_name,
     casualties: Number(row.casualties),
     createdAt: Number(row.created_at),
+    media: { url: row.media_url, contentType: row.media_content_type },
   }));
 }
 
