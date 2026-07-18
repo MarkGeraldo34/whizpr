@@ -120,6 +120,25 @@ export async function setModerationStatus(id: string, status: ModerationStatus):
   return rows[0] ? rowToReport(rows[0]) : null;
 }
 
+// Reporter self-service edit — deliberately scoped to description/casualties
+// only. Location, media, and moderation status aren't editable here: media
+// can't be swapped without re-running triage and payment, and moderation
+// status changes go through setModerationStatus (used by both the admin
+// endpoint and the reporter's own delete).
+export async function updateReport(
+  id: string,
+  updates: { description: string | null; casualties: number },
+): Promise<StoredReport | null> {
+  await ensureSchema();
+  const rows = await sql`
+    UPDATE reports
+    SET description = ${updates.description}, casualties = ${updates.casualties}
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  return rows[0] ? rowToReport(rows[0]) : null;
+}
+
 export async function getReportsForModeration(status?: ModerationStatus): Promise<StoredReport[]> {
   await ensureSchema();
   const rows = status
@@ -140,21 +159,26 @@ export interface PublicFeedEntry {
   casualties: number;
   createdAt: number;
   media: PublicFeedMedia;
+  // True only when the requester's session address matches the report's
+  // reporter — the raw reporterAddress is never sent to the client, so
+  // ownership is resolved server-side and exposed only as this boolean.
+  canEdit: boolean;
 }
 
 // Public-safe view of the feed: no reporter address (media is public, but
 // storeEmergencyMedia deliberately keeps the reporter's address out of the
 // media path, so the media URL doesn't de-anonymize them either). Auto-
 // published, so this includes everything except reports an admin has removed.
-export async function getPublicFeed(limit = 50): Promise<PublicFeedEntry[]> {
+export async function getPublicFeed(limit = 50, viewerAddress?: string): Promise<PublicFeedEntry[]> {
   await ensureSchema();
   const rows = await sql`
-    SELECT id, description, country_name, casualties, created_at, media_url, media_content_type
+    SELECT id, description, country_name, casualties, created_at, media_url, media_content_type, reporter_address
     FROM reports
     WHERE moderation_status != 'removed'
     ORDER BY created_at DESC
     LIMIT ${limit}::int
   `;
+  const normalizedViewer = viewerAddress?.toLowerCase();
   return rows.map((row) => ({
     id: row.id,
     description: row.description,
@@ -162,6 +186,7 @@ export async function getPublicFeed(limit = 50): Promise<PublicFeedEntry[]> {
     casualties: Number(row.casualties),
     createdAt: Number(row.created_at),
     media: { url: row.media_url, contentType: row.media_content_type },
+    canEdit: normalizedViewer !== undefined && normalizedViewer === row.reporter_address.toLowerCase(),
   }));
 }
 
