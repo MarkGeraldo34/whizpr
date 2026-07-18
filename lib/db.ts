@@ -27,7 +27,11 @@ function getClient(): NeonQueryFunction<false, false> {
     if (!connectionString) {
       throw new Error('DATABASE_URL is not set — persistent stores cannot connect to Postgres.');
     }
-    client = neon(connectionString);
+    // Next.js patches the global fetch() with its own caching layer, and
+    // neon()'s HTTP driver executes queries via fetch() internally — without
+    // an explicit opt-out, a warm serverless instance can return a cached
+    // response for an identical query instead of hitting Postgres fresh.
+    client = neon(connectionString, { fetchOptions: { cache: 'no-store' } });
   }
   return client;
 }
