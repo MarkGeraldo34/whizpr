@@ -147,7 +147,7 @@ export async function getPublicFeed(limit = 50): Promise<PublicFeedEntry[]> {
     FROM reports
     WHERE moderation_status != 'removed'
     ORDER BY created_at DESC
-    LIMIT ${limit}
+    LIMIT ${limit}::int
   `;
   return rows.map((row) => ({
     id: row.id,
