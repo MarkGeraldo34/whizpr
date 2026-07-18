@@ -7,13 +7,16 @@ import { ALERT_COST_WHIZCREDITS, whizcreditsToUsdtAtomic } from './pricing';
  * signed payment — no SIWE login, no prepaid deposit — as an alternative to
  * the session + Whizcredits ledger flow in app/api/report/route.ts.
  *
- * The challenge/signature/settlement-response shapes below are the x402 v2
- * wire format (confirmed live against another OKX-ecosystem x402 seller
- * during testing, not just the spec). The settle endpoint path is per OKX's
- * published docs (web3.okx.com/onchainos/dev-docs/payments/api-http-batch)
- * — this environment couldn't reach that host to confirm exact
- * request/response field names beyond what's used here, so verify against
- * the live docs before relying on this in production.
+ * The challenge/signature shapes are the x402 v2 wire format (confirmed live
+ * against another OKX-ecosystem x402 seller during testing). The facilitator
+ * request/response shape, envelope, endpoint path, and HMAC signing scheme
+ * are confirmed against OKX's own Go SDK source
+ * (github.com/okx/payments — go/x402/http/okx_facilitator_client.go and
+ * okx_auth.go): base URL `https://web3.okx.com`, path `/api/v6/pay/x402/settle`,
+ * body `{x402Version, paymentPayload, paymentRequirements, syncSettle}`,
+ * response unwrapped from an OKX `{code, msg, data}` envelope. Still worth a
+ * live smoke test against real credentials before trusting this with real
+ * money — this was verified by reading the SDK, not by exercising the API.
  */
 
 const X402_VERSION = 2;
@@ -164,11 +167,35 @@ function signOkxRequest(method: string, path: string, body: string) {
   };
 }
 
+// OKX wraps every API response in an envelope — {code: 0, data: {...}} on
+// success, {code: <nonzero>, msg | error_message: "..."} on a business-level
+// error (separate from HTTP status, which is 200 either way). Some
+// deployments (e.g. a mock facilitator) skip the envelope and return the
+// payload directly, so fall back to the raw body when `code`/`data` aren't
+// present. Confirmed against OKX's own Go SDK (unwrapEnvelope in
+// go/x402/http/okx_facilitator_client.go, github.com/okx/payments).
+function unwrapOkxEnvelope(json: unknown): SettleResult {
+  const envelope = json as { code?: number; msg?: string; error_message?: string; data?: unknown };
+  if (typeof envelope?.code === 'number') {
+    if (envelope.code !== 0) {
+      return {
+        success: false,
+        errorReason: 'facilitator_error',
+        errorMessage: envelope.msg || envelope.error_message || `OKX API error (code=${envelope.code})`,
+      };
+    }
+    if (envelope.data && typeof envelope.data === 'object') {
+      return envelope.data as SettleResult;
+    }
+  }
+  return json as SettleResult;
+}
+
 /**
  * Submits a verified payment authorization to OKX's x402 facilitator for
  * settlement. A `success: true` response means the facilitator accepted the
- * authorization for its batch settlement queue — not that it has landed
- * on-chain yet (poll /settle/status for the final on-chain outcome; not
+ * authorization — `status` may still be "pending" rather than fully
+ * on-chain-confirmed (poll /settle/status for the final outcome; not
  * implemented here — see README "Known gaps").
  */
 export async function settleX402Payment(
@@ -180,6 +207,9 @@ export async function settleX402Payment(
     x402Version: X402_VERSION,
     paymentPayload: decoded,
     paymentRequirements: expected,
+    // Wait for the facilitator's on-chain submission before responding
+    // (its default) rather than fire-and-forget in the background.
+    syncSettle: true,
   });
   const headers = signOkxRequest('POST', OKX_X402_SETTLE_PATH, body);
 
@@ -202,7 +232,7 @@ export async function settleX402Payment(
       errorMessage: `Settle request failed (HTTP ${res.status})`,
     };
   }
-  return json as SettleResult;
+  return unwrapOkxEnvelope(json);
 }
 
 export function encodePaymentResponse(result: SettleResult): string {

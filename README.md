@@ -32,10 +32,13 @@ economy.
   immediately spent — so ban checks, refund-on-failure, and the response
   shape are shared with the session path unchanged. EIP-3009 nonces are
   tracked (`processed_x402_payments`) to reject replay. The facilitator
-  settle endpoint path is per OKX's docs
-  (web3.okx.com/onchainos/dev-docs/payments/api-http-batch) — confirm the
-  exact request/response schema there before relying on this in production;
-  it wasn't reachable to verify while building this.
+  request/response shape, `{code, msg, data}` envelope, endpoint path
+  (`/api/v6/pay/x402/settle`), and HMAC signing are verified against OKX's
+  own Go SDK source (github.com/okx/payments —
+  `go/x402/http/okx_facilitator_client.go` / `okx_auth.go`) — still worth a
+  live smoke test with real credentials before trusting this with real
+  money, since it was verified by reading the SDK rather than by exercising
+  the API.
 - **Live feed:** Reports are auto-published — no admin approval gate before
   they're visible. `GET /api/feed` (public, no auth) returns recent reports,
   including the reported photo/video, with reporter identity always stripped
